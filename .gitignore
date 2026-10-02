@@ -1,0 +1,81 @@
+# =====================================================================================
+#  XRay AntiCheat — repository ignore rules
+# =====================================================================================
+#  The rule of thumb: source, documentation, configuration templates and build files are
+#  committed; anything this project *generates* or that belongs to a running server is not.
+# =====================================================================================
+
+# -------------------------------------------------------------------------------------
+# Build output
+# -------------------------------------------------------------------------------------
+target/
+*.versionsBackup
+.flattened-pom.xml
+dependency-reduced-pom.xml
+
+# The plugin jar is a build artefact. Build it from source rather than committing it.
+*.jar
+*.war
+*.ear
+# ...but a Maven wrapper jar, if one is ever added, is part of the build and is committed.
+!.mvn/wrapper/maven-wrapper.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# -------------------------------------------------------------------------------------
+# Runtime data — never commit a server's database, logs or installed plugin
+# -------------------------------------------------------------------------------------
+# The SQLite database, its rollback journal and its WAL sidecars. These hold player data.
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+logs/
+*.log
+# A local Paper/Spigot server used to test the plugin in situ, and anything installed into it.
+run/
+server/
+plugins/
+
+# -------------------------------------------------------------------------------------
+# Python visualiser (tools/xray_visualizer.py)
+# -------------------------------------------------------------------------------------
+# Written without a trailing slash so the pattern also matches a path that does not exist
+# yet — a directory-only pattern is not matched by `git check-ignore` on a missing path,
+# which makes the rule look broken right up until a virtualenv appears there.
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ipynb_checkpoints
+# Output written by the visualiser.
+tools/*.png
+tools/*.html
+
+# -------------------------------------------------------------------------------------
+# IDEs and editors
+# -------------------------------------------------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+nbproject/
+*.swp
+*.swo
+*~
+
+# -------------------------------------------------------------------------------------
+# Operating-system cruft
+# -------------------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/

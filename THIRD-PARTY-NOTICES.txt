@@ -1,0 +1,97 @@
+XRay AntiCheat — Third-Party Notices
+=====================================================================================
+
+This project is proprietary (see LICENSE.txt). It bundles and depends upon third-party
+components that remain governed by their own licenses. This file lists them so the
+obligations are visible without unpacking a jar.
+
+THIS FILE IS THE AUTHORITATIVE LIST. The shaded jar does NOT carry the complete set of
+notices, and cannot: it can only reproduce the license files its dependencies actually
+ship. Verified against the real dependency jars, the position is:
+
+  carried inside the shaded jar  : PostgreSQL JDBC Driver (META-INF/LICENSE), and
+                                   sqlite-jdbc (two notices under
+                                   META-INF/maven/org.xerial/sqlite-jdbc/), plus the
+                                   nested licence files the PostgreSQL driver itself
+                                   bundles for its SCRAM/stringprep dependencies under
+                                   META-INF/licenses/.
+  NOT carried — the dependency
+  ships no license file at all   : HikariCP, SLF4J API, MariaDB Connector/J.
+
+A build-time transformer merges the notice files that do exist, so that one is not
+silently discarded in favour of another. It cannot invent the missing ones. If you
+redistribute the JAR, supply the texts below yourself.
+
+Canonical locations for each license text:
+
+  Apache License 2.0 ..................... https://www.apache.org/licenses/LICENSE-2.0
+  MIT License ............................ https://opensource.org/license/mit
+  BSD 2-Clause License ................... https://opensource.org/license/bsd-2-clause
+  GNU LGPL 2.1 ........................... https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
+
+
+-------------------------------------------------------------------------------------
+RUNTIME COMPONENTS BUNDLED INTO THE SHADED JAR
+-------------------------------------------------------------------------------------
+
+  HikariCP
+    JDBC connection pool.
+    License: Apache License 2.0
+    Relocated to io.xrayac.libs.hikari in the shaded jar.
+
+  sqlite-jdbc (org.xerial)
+    SQLite JDBC driver, including its bundled native libraries.
+    License: Apache License 2.0
+    DELIBERATELY NOT relocated: it is a JNI library whose native symbol names are derived
+    from the original class names, so relocating it breaks the driver at runtime.
+
+  SLF4J API (org.slf4j)
+    Logging facade.
+    License: MIT License
+
+  PostgreSQL JDBC Driver (org.postgresql)
+    PostgreSQL connectivity.
+    License: BSD 2-Clause License
+
+  MariaDB Connector/J (org.mariadb.jdbc)
+    MariaDB / MySQL connectivity.
+    License: GNU Lesser General Public License 2.1
+
+  SCRAM and stringprep libraries (com.ongres.scram, com.ongres.stringprep)
+    Transitive dependencies of the PostgreSQL driver's SCRAM authentication support.
+    License: Apache License 2.0
+
+-------------------------------------------------------------------------------------
+BUILD-TIME ONLY — NOT DISTRIBUTED IN THE JAR
+-------------------------------------------------------------------------------------
+
+  Paper API (`paper-api 26.2.build.129-stable`, io.papermc.paper)
+    Compile-time API used by the xray-paper module.
+    License: GPL-3.0
+
+    NOTE: linking a proprietary plugin against a GPL-licensed API is a widely debated
+    area in the Minecraft plugin ecosystem, and it is not settled here. If you intend to
+    distribute this plugin, treat it as a question for a qualified lawyer rather than as
+    a formality.
+
+  Maven plugins: maven-compiler-plugin, maven-surefire-plugin, maven-shade-plugin
+    (and its ASM 9.10.1 override), maven-jar-plugin.
+    Various Apache-2.0 licenses. These run at build time and are not bundled.
+
+  Test-only: JUnit 5, AssertJ, Mockito.
+
+  Python visualiser (`tools/xray_visualizer.py`): NumPy, pandas and Matplotlib, plus
+  optional SQLAlchemy and database drivers. These are imported by the tool at runtime on
+  your own machine; they are not bundled here. See `tools/requirements.txt`.
+
+-------------------------------------------------------------------------------------
+LGPL NOTE
+-------------------------------------------------------------------------------------
+
+The MariaDB Connector/J is LGPL-2.1, which is a copyleft license with specific
+obligations on redistribution — including requirements relating to the ability to
+substitute a modified version of the library. It is bundled inside the shaded jar for
+convenience. If you distribute this plugin, satisfy yourself as to those obligations, or
+remove the MariaDB driver from the shaded artifact and ship it alongside instead.
+
+-------------------------------------------------------------------------------------

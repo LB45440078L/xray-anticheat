@@ -1,0 +1,9 @@
+# Migration index — one file per line, applied in ascending version order.
+#
+# Files are listed explicitly rather than discovered by scanning, because directory scanning does
+# not work reliably inside a packaged JAR: the failure mode would be silently applying no
+# migrations on a production server, which is far worse than maintaining one line per migration.
+#
+# Naming convention: V<version>__<description>.sql   (version must be a positive integer)
+
+V1__initial_schema.sql

@@ -1,0 +1,84 @@
+# =====================================================================================
+#  XRay AntiCheat — database configuration
+# =====================================================================================
+#
+#  Three engines are supported and the plugin treats them identically; only this file differs.
+#  The schema itself is dialect-neutral (see xray-persistence/.../migrations).
+#
+#  SQLite is the default and needs nothing installed. It is entirely adequate for a single server.
+#  Move to MariaDB or PostgreSQL when you run a network of servers that should share one record, or
+#  when the ledger outgrows a single file.
+#
+#  The plugin NEVER runs a database operation on the Minecraft server thread. If the database is
+#  unreachable at startup it logs clearly and keeps running with reduced function rather than
+#  preventing the server from starting (see `fail-safe` below).
+# =====================================================================================
+
+# Layout version of this file. If it ever exceeds the version the running plugin understands, the
+# plugin logs a warning instead of silently ignoring settings it does not recognise.
+config-version: 1
+
+storage:
+  # sqlite | mariadb | postgresql
+  type: sqlite
+
+  sqlite:
+    # Relative paths are resolved against the server's working directory.
+    file: "plugins/XRayAntiCheat/xray.db"
+    # Write-ahead logging and a writer busy-timeout are always applied to SQLite connections and are
+    # deliberately not configurable: the server thread must never be blocked by a background write,
+    # and a competing writer must wait rather than fail. See docs/PERFORMANCE.md.
+
+  mariadb:
+    host: "localhost"
+    port: 3306
+    database: "xray_anticheat"
+    username: "xray"
+    # Leave empty to supply the password through the environment variable named below instead of
+    # storing it in a file that ends up in backups and version control.
+    password: ""
+    password-environment-variable: "XRAY_DB_PASSWORD"
+    # Appended to the JDBC URL. `useServerPrepStmts` and `rewriteBatchedStatements` together make
+    # bulk inserts dramatically faster on MariaDB.
+    connection-parameters: "useServerPrepStmts=true&rewriteBatchedStatements=true&useUnicode=true&characterEncoding=utf8"
+
+  postgresql:
+    host: "localhost"
+    port: 5432
+    database: "xray_anticheat"
+    username: "xray"
+    password: ""
+    password-environment-variable: "XRAY_DB_PASSWORD"
+    connection-parameters: "reWriteBatchedInserts=true"
+
+  pool:
+    # This plugin's traffic is bursty but light. A large pool is worse than a small one here: it
+    # multiplies concurrent writers, increases lock contention on the server's tables, and consumes
+    # connections the database may need for other plugins. Ten is generous.
+    maximum-pool-size: 10
+    minimum-idle: 2
+    connection-timeout-millis: 10000
+
+    # Rows per JDBC batch on bulk writes. Larger batches amortise the round trip better but hold
+    # memory longer and delay the flush.
+    batch-size: 500
+
+  migrations:
+    # Apply pending schema migrations at startup. Migrations are forward-only and additive: they add
+    # tables and columns and never drop or rewrite existing data. Disable only if you apply them
+    # yourself with an external tool.
+    run-on-startup: true
+
+  fail-safe:
+    # When true (strongly recommended) an unreachable database does not prevent the plugin from
+    # enabling. The plugin logs the failure, retries in the background, and runs with reduced
+    # function: analysis continues in memory and alerts are raised, but nothing is persisted and
+    # ban-wave enforcement is suspended, because enforcement depends on stored evidence being
+    # recomputed before anyone is removed.
+    #
+    # When false, a failed connection disables the plugin. Only choose this if you would rather the
+    # server run with no anti-cheat than run with an unpersisted one.
+    continue-without-database: true
+
+    # Seconds between connection retry attempts while the database is down.
+    retry-interval-seconds: 30

@@ -1,0 +1,297 @@
+# =====================================================================================
+#  XRay AntiCheat — moderator interface
+# =====================================================================================
+#
+#  Every menu, its size, its items and their lore are defined here. Nothing about the interface is
+#  hard-coded, so you can retheme it or reorder it without touching the plugin.
+#
+#  PLACEHOLDERS available in names and lore
+#    %player% %uuid% %world% %ore% %score% %confidence% %strength% %samples% %signals%
+#    %decibans% %blocks% %distance% %hidden% %exposed% %total% %fraction% %time% %candidates%
+#
+#  ACTIONS an item may run (permissions are always re-checked when the item is clicked, so
+#  configuring an action here never grants it):
+#    OPEN:<menu-id>      open another menu from this file
+#    INSPECT             show the full textual evidence report
+#    TELEPORT            teleport the moderator to the player
+#    TELEPORT_VANISH     teleport and vanish
+#    FLAG                flag the player's record
+#    CLEAR               re-arm the alert throttle for the player
+#    KICK                kick, after confirmation
+#    BAN                 ban, after confirmation
+#    ADD_NOTE            point the moderator at /xray note, which can collect the text
+#    SPECTATE            needs an external spectate plugin; reports so and changes nothing
+#    FREEZE              needs an external freeze plugin; reports so and changes nothing
+#    CLOSE               close the menu
+#
+#  An action name this build does not recognise is logged and does nothing, rather than failing silently.
+#
+#  Sizes must be a multiple of 9, between 9 and 54.
+# =====================================================================================
+
+config-version: 1
+
+# The filler used to pad the empty slots of every menu. Navigation is defined per menu instead, because
+# each one returns somewhere different: the player list, the player's page, or nothing at all.
+common:
+  filler:
+    material: GRAY_STAINED_GLASS_PANE
+    name: " "
+
+# -------------------------------------------------------------------------------------
+# The list of tracked players, sorted by suspicion.
+# -------------------------------------------------------------------------------------
+player-list:
+  title: "§8XRay §7— tracked players"
+  size: 54
+  player-item:
+    material: "PLAYER_HEAD"
+    name: "§f%player%"
+    lore:
+      - "§7World       §f%world%"
+      - "§7Verdict     §f%strength%"
+      - "§7Score       §f%score% §8(§7confidence §f%confidence%§8)"
+      - "§7Evidence    §f%decibans% §7decibans"
+      - "§7Signals     §f%signals% §7independent, §f%samples%§7 observation(s)"
+      - "§7Discoveries §f%hidden%§7 buried, §f%exposed%§7 exposed"
+      - ""
+      - "§eClick to inspect."
+    # No action key here on purpose: this list binds each head's click in code, because the action has
+    # to carry that player's UUID, which the configuration cannot know. Every head opens its own row.
+  empty:
+    material: BARRIER
+    name: "§7No tracked players"
+    lore:
+      - "§7Nobody has produced analysable activity yet."
+      - "§7This is normal on a fresh install."
+
+  # Pagination. Entries are laid out from slot 0 up to the lowest navigation slot below, so the
+  # navigation row can never overwrite a player head and the number of players per page follows from
+  # these slots rather than being fixed. Remove this whole section to disable paging and use every slot.
+  navigation:
+    previous-slot: 45
+    info-slot: 49
+    next-slot: 53
+    previous:
+      material: ARROW
+      name: "§e« Previous page"
+      lore:
+        - "§7Go to page §f%page%§7 of §f%pages%§7."
+        - "§8Showing §f%players%§8 tracked player(s) in total."
+    next:
+      material: ARROW
+      name: "§eNext page »"
+      lore:
+        - "§7Go to the next page."
+        - "§8Showing §f%players%§8 tracked player(s) in total."
+    page-info:
+      material: PAPER
+      name: "§7Page §f%page%§7 of §f%pages%"
+      lore:
+        - "§8%players% tracked player(s)."
+        - "§8Sorted by suspicion, highest first."
+        - "§8Use the arrows to move between pages."
+
+# -------------------------------------------------------------------------------------
+# Everything about one player, with the moderation actions.
+# -------------------------------------------------------------------------------------
+player-detail:
+  title: "§8Inspect §7— %player%"
+  size: 54
+  items:
+    - slot: 4
+      material: "PLAYER_HEAD"
+      name: "§f%player%"
+      lore:
+        - "§7UUID   §f%uuid%"
+        - "§7World  §f%world%"
+      action: "INSPECT"
+
+    - slot: 19
+      material: "SPYGLASS"
+      name: "§bEvidence report"
+      lore:
+        - "§7Verdict     §f%strength%"
+        - "§7Score       §f%score%"
+        - "§7Confidence  §f%confidence%"
+        - "§7Signals     §f%signals% §7independent"
+        - "§7Observations §f%samples%"
+        - "§7Strength    §f%decibans% §7decibans"
+        - ""
+        - "§eClick for the full written explanation."
+      action: "INSPECT"
+
+    - slot: 20
+      material: "DIAMOND_PICKAXE"
+      name: "§bMining statistics"
+      lore:
+        - "§7Blocks mined  §f%blocks%"
+        - "§7Distance      §f%distance% §7blocks"
+        - "§7Buried finds  §f%hidden%"
+        - "§7Exposed finds §f%exposed%"
+        - "§7Hidden share  §f%fraction%"
+        - ""
+        - "§8A high exposed share argues in the player's favour."
+      action: "OPEN:statistics"
+
+    - slot: 21
+      material: "ENDER_EYE"
+      name: "§bTeleport to player"
+      lore:
+        - "§7Move to the player's current position."
+      permission: "xray.teleport"
+      action: "TELEPORT"
+
+    - slot: 22
+      material: "ENDER_PEARL"
+      name: "§bTeleport, vanished"
+      lore:
+        - "§7Teleport while hidden from the player."
+      permission: "xray.teleport"
+      action: "TELEPORT_VANISH"
+
+    - slot: 23
+      material: "LEATHER_BOOTS"
+      name: "§bSpectate"
+      lore:
+        - "§7Watch the player in spectator mode."
+        - "§8Generates no evidence either way."
+      permission: "xray.inspect"
+      action: "SPECTATE"
+
+    - slot: 24
+      material: "PACKED_ICE"
+      name: "§bFreeze"
+      lore:
+        - "§7Hold the player in place while you work."
+      permission: "xray.freeze"
+      action: "FREEZE"
+
+    - slot: 29
+      material: "NAME_TAG"
+      name: "§bAdd moderator note"
+      lore:
+        - "§7Attach a note to this player's record."
+        - "§8Notes need text, so this points you at"
+        - "§8/xray note <player> <text> instead."
+      permission: "xray.inspect"
+      action: "ADD_NOTE"
+
+    - slot: 30
+      material: "LIME_DYE"
+      name: "§aRe-arm alerts"
+      lore:
+        - "§7Alerts for this player are throttled while they"
+        - "§7keep triggering, so you are not spammed."
+        - "§8This clears that throttle: the next alert"
+        - "§8arrives immediately."
+        - "§8Does not change the player's record."
+      permission: "xray.inspect"
+      action: "CLEAR"
+
+    - slot: 31
+      material: "WRITABLE_BOOK"
+      name: "§eFlag player"
+      lore:
+        - "§7Mark the record for later review."
+        - "§8No action is taken against the player."
+      permission: "xray.inspect"
+      action: "FLAG"
+
+    - slot: 32
+      material: "IRON_DOOR"
+      name: "§6Kick player"
+      lore:
+        - "§7Disconnect the player."
+        - "§8Reversible. Requires confirmation."
+      permission: "xray.kick"
+      action: "KICK"
+
+    - slot: 33
+      material: "NETHERITE_AXE"
+      name: "§4Ban player"
+      lore:
+        - "§7Remove the player permanently."
+        - "§8Irreversible. Requires confirmation."
+      permission: "xray.ban"
+      action: "BAN"
+
+    - slot: 49
+      material: "ARROW"
+      name: "§e« Back to player list"
+      action: "OPEN:player-list"
+
+# -------------------------------------------------------------------------------------
+# Per-ore breakdown.
+# -------------------------------------------------------------------------------------
+statistics:
+  title: "§8Statistics §7— %player%"
+  size: 27
+  header-slot: 4
+  # Where the "back" item sits. Ore rows are laid out in every other slot, in order.
+  back-slot: 22
+  ore-item:
+    material: "DIAMOND"
+    name: "§f%ore%"
+    lore:
+      - "§7Buried        §f%hidden%"
+      - "§7Exposed       §f%exposed%"
+      - "§7Total         §f%total%"
+      - "§7Hidden share  §f%fraction%"
+  # Per-ore icons, so diamond, emerald and ancient debris are told apart at a glance. Any ore not
+  # listed here falls back to ore-item.material above.
+  ore-materials:
+    diamond: DIAMOND
+    emerald: EMERALD
+    netherite: ANCIENT_DEBRIS
+    gold: GOLD_INGOT
+    iron: IRON_INGOT
+    copper: COPPER_INGOT
+    coal: COAL
+    redstone: REDSTONE
+    lapis: LAPIS_LAZULI
+    quartz: QUARTZ
+  back:
+    material: ARROW
+    name: "§e« Back to %player%"
+    lore:
+      - "§7Return to the evidence page for %player%."
+  empty:
+    material: BARRIER
+    name: "§7No ore discoveries recorded"
+    lore:
+      - "§7Nothing analysable in this world yet."
+
+# -------------------------------------------------------------------------------------
+# Confirmation before anything irreversible.
+# -------------------------------------------------------------------------------------
+confirm:
+  title: "§8Confirm §7— %action% §8on §7%player%"
+  size: 27
+  confirm-slot: 11
+  cancel-slot: 15
+  confirm:
+    material: LIME_CONCRETE
+    name: "§a§lConfirm"
+    lore:
+      - "§7Carry out §f%action% §7on §f%player%§7."
+      - "§cThis is logged against your name."
+  cancel:
+    material: RED_CONCRETE
+    name: "§c§lCancel"
+    lore:
+      - "§7Do nothing."
+  prompt:
+    kick: "§cConfirm kicking %player%."
+    ban: "§cConfirm banning %player%. This is irreversible."
+
+# Global interface settings.
+settings:
+  # Whether clicking an item without the required permission shows an explanation rather than doing
+  # nothing. Helpful for training staff.
+  explain-missing-permission: true
+  # Sound played when a menu opens or an action is taken. Set to NONE to disable.
+  open-sound: "BLOCK_CHEST_OPEN"
+  click-sound: "UI_BUTTON_CLICK"
+  # Filler the empty slots of menus that do not define items for every slot.
+  fill-empty-slots: true

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.xrayac</groupId>
+    <artifactId>xray-anticheat-parent</artifactId>
+    <version>1.0.0</version>
+  </parent>
+
+  <artifactId>xray-paper</artifactId>
+  <name>XRay AntiCheat :: Paper Plugin</name>
+  <description>
+    Paper adapter: event listeners, observation translation, commands, moderator GUI,
+    scheduling and lifecycle wiring. This module is the ONLY place that touches
+    Bukkit/Paper types.
+  </description>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.papermc.paper</groupId>
+      <artifactId>paper-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.xrayac</groupId>
+      <artifactId>xray-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.xrayac</groupId>
+      <artifactId>xray-persistence</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>xray-anticheat-${project.version}</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <dependencies>
+          <!-- Shade 3.6.2 bundles an ASM that predates Java 25 class files
+               (major version 69). Overriding ASM at plugin level lets us shade
+               and relocate the module's bytecode without downgrading the
+               compiler release or the shade plugin. -->
+          <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm</artifactId>
+            <version>9.10.1</version>
+          </dependency>
+          <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm-commons</artifactId>
+            <version>9.10.1</version>
+          </dependency>
+        </dependencies>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals><goal>shade</goal></goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <artifactSet>
+                <includes>
+                  <include>io.xrayac:xray-core</include>
+                  <include>io.xrayac:xray-persistence</include>
+                  <include>com.zaxxer:HikariCP</include>
+                  <include>org.xerial:sqlite-jdbc</include>
+                  <include>org.mariadb.jdbc:mariadb-java-client</include>
+                  <include>org.postgresql:postgresql</include>
+                  <include>org.slf4j:slf4j-api</include>
+                </includes>
+              </artifactSet>
+              <relocations>
+                <!-- Relocate HikariCP only. It is pure Java, and it is the library most likely to be
+                     bundled at a different version by another plugin, so isolating it is worthwhile.
+
+                     sqlite-jdbc is deliberately NOT relocated. It is a JNI library: the classes in
+                     org.sqlite.core are bound to native methods whose symbol names are derived from
+                     the original fully-qualified class names (Java_org_sqlite_core_NativeDB_...).
+                     Renaming the Java side leaves the native side exporting the old symbols, and the
+                     driver fails at runtime with UnsatisfiedLinkError the first time a connection is
+                     opened. That failure is invisible to the unit tests, which run against the
+                     unshaded modules, and appears only on a real server — so it is avoided by
+                     construction rather than caught later.
+
+                     The MariaDB and PostgreSQL drivers are pure Java but are likewise left
+                     unrelocated for consistency: they are the only copies of themselves in a server's
+                     plugin directory in practice, and the gain from relocating them is small. -->
+                <relocation>
+                  <pattern>com.zaxxer.hikari</pattern>
+                  <shadedPattern>io.xrayac.libs.hikari</shadedPattern>
+                </relocation>
+              </relocations>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>module-info.class</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <!-- A single ServiceLoader-registry file, otherwise the first
+                   driver wins and MariaDB/PostgreSQL/NativeSQLite collision occurs. -->
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                <!-- Merge the license and notice files that the dependencies actually ship, instead of
+                     keeping whichever one shade happens to see last. The PostgreSQL driver and
+                     sqlite-jdbc both ship notices, and one of them was being discarded.
+
+                     Note this is all it can do: HikariCP, slf4j-api and the MariaDB driver ship NO
+                     license file inside their jars, so no transformer can preserve what is not there.
+                     That gap is why THIRD-PARTY-NOTICES.txt exists at the repository root — it is the
+                     authoritative list, because the jar alone is not. -->
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/LICENSE</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/LICENSE.txt</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/NOTICE</resource>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                  <resource>META-INF/NOTICE.txt</resource>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

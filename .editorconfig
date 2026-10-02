@@ -1,0 +1,48 @@
+# =====================================================================================
+#  XRay AntiCheat — editor configuration
+# =====================================================================================
+#  Honoured by most editors and IDEs without any plugin. It exists so that a contributor
+#  cannot accidentally reformat a file and produce a diff full of whitespace.
+# =====================================================================================
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Java: four spaces, matching the existing sources.
+[*.java]
+indent_size = 4
+# Imports are grouped by package with a blank line between groups; nothing enforces this
+# automatically, so it is stated here as guidance for anyone configuring their IDE.
+max_line_length = 100
+
+# Build files and configuration: two spaces, matching the existing POMs and YAML.
+[*.{xml,pom,yml,yaml,json}]
+indent_size = 2
+
+# -------------------------------------------------------------------------------------
+# Do NOT trim trailing whitespace in YAML.
+# -------------------------------------------------------------------------------------
+# messages.yml builds the console banner's horizontal rule out of a quoted run of trailing
+# spaces ('&8&m        '). Trimming them does not fail anything, it silently shortens the
+# rule on every server — a change nobody would trace back to their editor.
+[*.{yml,yaml}]
+trim_trailing_whitespace = false
+
+# Markdown: two trailing spaces are a hard line break, so they are meaningful.
+[*.md]
+trim_trailing_whitespace = false
+
+# The Python tool follows its own community convention.
+[*.py]
+indent_size = 4
+max_line_length = 100
+
+[Makefile]
+indent_style = tab

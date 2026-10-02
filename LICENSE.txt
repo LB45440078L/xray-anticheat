@@ -1,0 +1,153 @@
+XRay AntiCheat — Proprietary License
+Copyright (c) 2026 XRayAC Contributors. All Rights Reserved.
+
+=====================================================================================
+1. DEFINITIONS
+=====================================================================================
+
+"Software" means the XRay AntiCheat project in its entirety: all source code, compiled
+bytecode, class files, the shaded plugin JAR, configuration files, message and interface
+definitions, database schema and migrations, documentation, and the Python visualisation
+tool, together with any accompanying data files, in any form and on any medium.
+
+"Licensor" means the copyright holder named above.
+
+"You" means any individual or legal entity that obtains, possesses, installs, runs,
+reads, or otherwise comes into contact with the Software.
+
+=====================================================================================
+2. OWNERSHIP
+=====================================================================================
+
+The Software is proprietary and is protected by copyright law and by international
+copyright treaties. The Licensor reserves all rights not expressly granted in this
+license. No title to, or ownership of, the Software is transferred to You.
+
+=====================================================================================
+3. NO LICENSE GRANTED
+=====================================================================================
+
+NO LICENSE OR PERMISSION OF ANY KIND IS GRANTED UNDER THIS DOCUMENT, whether by
+implication, estoppel, or otherwise.
+
+Without the Licensor's prior written permission, You may NOT:
+
+  (a) use the Software, in whole or in part, for any purpose;
+  (b) copy, reproduce, download, store, or archive the Software;
+  (c) modify, adapt, translate, alter, or create derivative works from the Software;
+  (d) merge the Software with any other software, or incorporate any part of it into
+      another product;
+  (e) distribute, publish, transmit, upload, post, sublicense, rent, lease, lend, sell,
+      resell, or otherwise make the Software available to any third party;
+  (f) install or run the Software on any server, network, container, or device;
+  (g) remove, obscure, or alter this license, any copyright notice, attribution,
+      author credit, or any other proprietary notice contained in the Software;
+  (h) use the Software's name, the names of its contributors, or any of its marks to
+      endorse or promote any product without prior written consent;
+  (i) reverse engineer, decompile, disassemble, or otherwise attempt to derive the
+      source code, underlying algorithms, statistical models, or internal structure of
+      any compiled portion of the Software, to the maximum extent such restriction is
+      permitted by applicable law.
+
+The single exception is the minimum use strictly required by applicable law, or by a
+license that applies to a third-party component under Section 8 below. Nothing in this
+document is intended to restrict any right that applicable law makes non-waivable.
+
+=====================================================================================
+4. NO WARRANTY
+=====================================================================================
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE, TITLE, ACCURACY, AND NON-INFRINGEMENT.
+
+The Licensor does not warrant that the Software will be uninterrupted, timely, secure,
+error-free, or that it will detect any particular player behaviour correctly. The
+Software is a statistical inference system: it produces assessments and evidence, not
+proof, and it is expressly not warranted to be free of false positives or false
+negatives. Any decision to act against a player on the basis of the Software's output is
+Yours alone.
+
+=====================================================================================
+5. LIMITATION OF LIABILITY
+=====================================================================================
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE LICENSOR OR ANY
+CONTRIBUTOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR
+THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+This includes, without limitation, direct, indirect, incidental, special, exemplary, and
+consequential damages; loss of profit, revenue, data, goodwill, or server population;
+service interruption; and any claim brought by a player, server operator, or third party
+in connection with enforcement action taken or not taken, including claims under data
+protection law.
+
+=====================================================================================
+6. TERMINATION
+=====================================================================================
+
+Any breach of this license immediately and automatically terminates all rights that might
+otherwise be construed from it. On termination You must destroy all copies of the Software
+in Your possession or control, in every form.
+
+=====================================================================================
+7. NO OBLIGATION TO SUPPORT OR MAINTAIN
+=====================================================================================
+
+The Licensor is under no obligation to provide updates, patches, support, maintenance,
+compatibility fixes, or continued availability of the Software or of any dataset it
+produces or depends upon.
+
+=====================================================================================
+8. THIRD-PARTY COMPONENTS
+=====================================================================================
+
+This license applies only to the Software as authored by the Licensor. The Software
+bundles and depends upon third-party components that remain governed exclusively by their
+own licenses. This license does not relicense them, and nothing here may be read as
+narrowing any right granted to You by those licenses.
+
+Principal components bundled into the shaded plugin JAR:
+
+  - HikariCP ............................ Apache License 2.0
+  - sqlite-jdbc (org.xerial) ............ Apache License 2.0
+  - SLF4J API (org.slf4j) ............... MIT License
+  - PostgreSQL JDBC Driver .............. BSD 2-Clause License
+  - MariaDB Connector/J ................. GNU Lesser General Public License 2.1
+  - SCRAM / stringprep libraries ........ Apache License 2.0
+    (com.ongres.scram, com.ongres.stringprep; transitive dependencies of the
+     PostgreSQL driver's SCRAM authentication support)
+
+The PostgreSQL, MariaDB and SQLite drivers additionally carry their own bundled native
+code and third-party notices.
+
+Build-time only, not distributed in the JAR: the Maven build plugins, and the Paper API
+used for compilation (Paper/Bukkit API is distributed under GPL-3.0; how that interacts
+with a proprietary plugin is a question to settle with a qualified lawyer, as practice in
+the Minecraft plugin ecosystem varies widely).
+
+Compile-time dependencies are declared in the module `pom.xml` files.
+
+IMPORTANT: redistributing the shaded JAR means carrying the license and notice texts of
+every bundled component. The JAR carries only those its dependencies actually ship — the
+PostgreSQL driver's and sqlite-jdbc's — and NOT those of HikariCP, SLF4J or the MariaDB
+driver, none of which ships a license file. `THIRD-PARTY-NOTICES.txt` in this repository
+is therefore the authoritative list, with canonical locations for each text. If You
+distribute the JAR, supply the missing notices yourself. In particular, the MariaDB driver
+is licensed under the LGPL, which imposes obligations of its own on redistribution —
+consult Section 4 and Section 6 of that license rather than assuming the terms above cover
+it.
+
+=====================================================================================
+9. GOVERNING LAW AND SEVERABILITY
+=====================================================================================
+
+This license is governed by the laws of the jurisdiction in which the Licensor resides,
+without regard to its conflict-of-law provisions. If any provision of this license is
+held unenforceable, that provision will be limited or eliminated to the minimum extent
+necessary, and the remaining provisions will remain in full force and effect.
+
+=====================================================================================
+                            END OF TERMS AND CONDITIONS
+=====================================================================================

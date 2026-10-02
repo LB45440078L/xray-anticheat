@@ -1,0 +1,87 @@
+name: XRayAntiCheat
+version: 1.0.0
+main: io.xrayac.paper.XRayAntiCheatPlugin
+api-version: '26.2'
+authors: [XRayAC Contributors]
+description: Statistical X-Ray / ore-visibility anti-cheat with explainable evidence.
+website: https://example.invalid/xray-anticheat
+folia-supported: false
+
+commands:
+  xray:
+    description: Inspect mining evidence and manage the anti-cheat.
+    usage: |
+      /xray help
+      /xray status
+      /xray inspect <player>
+      /xray stats <player>
+      /xray evidence <player>
+      /xray history <player>
+      /xray gui [player]
+      /xray banwave [status|plan|approve]
+      /xray note <player> <text>
+      /xray reload
+      /xray debug
+    aliases: [xrayac, ac]
+    permission: xray.inspect
+    permission-message: "You do not have permission to inspect mining evidence."
+
+permissions:
+  # The permission tree is graded deliberately. Reading a status page, inspecting a player,
+  # teleporting to them, kicking them and banning them are five different levels of trust; a
+  # single umbrella node would either over-restrict ordinary moderators or hand every inspector
+  # the power to remove players.
+  xray.*:
+    description: Grants every XRay AntiCheat permission.
+    default: op
+    children:
+      xray.admin: true
+      xray.alerts: true
+      xray.inspect: true
+      xray.teleport: true
+      xray.kick: true
+      xray.ban: true
+      xray.banwave: true
+      xray.freeze: true
+      xray.reload: true
+      xray.debug: true
+
+  xray.admin:
+    description: View plugin status and health.
+    default: op
+
+  xray.alerts:
+    description: Receive alerts when a player's evidence reaches a threshold.
+    default: op
+
+  xray.inspect:
+    description: Inspect players, read evidence reports and open the moderator interface.
+    default: op
+
+  xray.teleport:
+    description: Teleport to a player from the inspection interface.
+    default: op
+
+  xray.freeze:
+    description: Hold a player in place while investigating.
+    default: op
+
+  xray.kick:
+    description: Kick a player from the inspection interface.
+    default: op
+
+  xray.ban:
+    description: Ban a player from the inspection interface.
+    default: op
+
+  xray.banwave:
+    description: Review, plan and approve ban waves.
+    default: op
+
+  xray.reload:
+    description: Reload the plugin configuration.
+    default: op
+
+  xray.debug:
+    description: Toggle debug logging.
+    default: op

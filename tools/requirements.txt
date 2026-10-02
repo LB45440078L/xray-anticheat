@@ -1,0 +1,24 @@
+# XRay AntiCheat visualiser — required runtime dependencies.
+#
+# Install with:  python -m pip install -r tools/requirements.txt
+#
+# numpy / pandas / matplotlib are hard requirements. scipy and SQLAlchemy are
+# NOT required: scipy is never imported, and SQLAlchemy is optional (the tool
+# falls back to raw DB-API drivers). SQLAlchemy is listed because it is the
+# recommended path and is what the --demo in-memory store uses.
+numpy>=1.26
+pandas>=2.0
+matplotlib>=3.7
+
+# Optional but recommended: needed for the --demo in-memory SQLite store and
+# for the cleanest multi-backend support (SQLite / PostgreSQL / MariaDB).
+SQLAlchemy>=2.0
+
+# Optional database drivers, only needed when SQLAlchemy is NOT installed:
+#   PostgreSQL:
+#     psycopg[binary]>=3.1      # or: psycopg2-binary>=2.9
+#   MariaDB / MySQL:
+#     PyMySQL>=1.1              # or: mariadb>=1.1
+#
+# Optional acceleration (never required at import time):
+#   scipy>=1.11

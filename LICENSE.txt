@@ -103,41 +103,40 @@ produces or depends upon.
 8. THIRD-PARTY COMPONENTS
 =====================================================================================
 
-This license applies only to the Software as authored by the Licensor. The Software
-bundles and depends upon third-party components that remain governed exclusively by their
-own licenses. This license does not relicense them, and nothing here may be read as
-narrowing any right granted to You by those licenses.
+This license applies only to the Software as authored by the Licensor. The Software depends
+upon third-party components that remain governed exclusively by their own licenses. This
+license does not relicense them, and nothing here may be read as narrowing any right
+granted to You by those licenses.
 
-Principal components bundled into the shaded plugin JAR:
+Third-party components this Software depends upon:
 
   - HikariCP ............................ Apache License 2.0
   - sqlite-jdbc (org.xerial) ............ Apache License 2.0
-  - SLF4J API (org.slf4j) ............... MIT License
   - PostgreSQL JDBC Driver .............. BSD 2-Clause License
   - MariaDB Connector/J ................. GNU Lesser General Public License 2.1
-  - SCRAM / stringprep libraries ........ Apache License 2.0
-    (com.ongres.scram, com.ongres.stringprep; transitive dependencies of the
-     PostgreSQL driver's SCRAM authentication support)
+  - SLF4J API (org.slf4j) ............... MIT License
+  - Paper API (compile and runtime) ..... GPL-3.0
 
-The PostgreSQL, MariaDB and SQLite drivers additionally carry their own bundled native
-code and third-party notices.
+NONE of these components is redistributed in the plugin JAR. The JAR contains only the
+Licensor's own code and configuration. At runtime the server supplies SLF4J and the Paper
+API, and it fetches HikariCP, sqlite-jdbc and the MariaDB and PostgreSQL drivers from
+Maven Central under their original names and versions, as declared under `libraries:` in
+`plugin.yml`. The recipient therefore obtains those libraries from their publishers, not
+from the Licensor, and their notices travel with the copies the recipient receives.
 
-Build-time only, not distributed in the JAR: the Maven build plugins, and the Paper API
-used for compilation (Paper/Bukkit API is distributed under GPL-3.0; how that interacts
-with a proprietary plugin is a question to settle with a qualified lawyer, as practice in
-the Minecraft plugin ecosystem varies widely).
+Linking a proprietary plugin against the GPL-licensed Paper/Bukkit API remains a debated
+question in the Minecraft plugin ecosystem, and it is not settled here; treat it as a
+matter for a qualified lawyer rather than a formality.
 
-Compile-time dependencies are declared in the module `pom.xml` files.
+Compile-time dependencies are declared in the module `pom.xml` files. `THIRD-PARTY-
+NOTICES.txt` in this repository is the authoritative list of the above, with canonical
+locations for each license text.
 
-IMPORTANT: redistributing the shaded JAR means carrying the license and notice texts of
-every bundled component. The JAR carries only those its dependencies actually ship — the
-PostgreSQL driver's and sqlite-jdbc's — and NOT those of HikariCP, SLF4J or the MariaDB
-driver, none of which ships a license file. `THIRD-PARTY-NOTICES.txt` in this repository
-is therefore the authoritative list, with canonical locations for each text. If You
-distribute the JAR, supply the missing notices yourself. In particular, the MariaDB driver
-is licensed under the LGPL, which imposes obligations of its own on redistribution —
-consult Section 4 and Section 6 of that license rather than assuming the terms above cover
-it.
+If You modify the build so that any third-party library is bundled into the JAR again,
+then You are redistributing that library, and the obligation to carry its license and
+notice texts becomes Yours. Note in particular that the MariaDB Connector/J is LGPL-2.1,
+under which redistribution imposes obligations of its own — consult Sections 4 and 6 of
+that license rather than assuming the terms above cover it.
 
 =====================================================================================
 9. GOVERNING LAW AND SEVERABILITY

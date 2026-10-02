@@ -48,7 +48,6 @@
 
     <compiler.plugin.version>3.16.0</compiler.plugin.version>
     <surefire.plugin.version>3.6.0</surefire.plugin.version>
-    <shade.plugin.version>3.6.2</shade.plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -74,31 +73,62 @@
         <scope>test</scope>
       </dependency>
 
+      <!-- ===========================================================================
+           Libraries that the SERVER provides or that the plugin fetches at runtime.
+
+           These are `provided` on purpose, and it is the single most important reason
+           the shipped jar is small. `provided` keeps them on the compile and test
+           classpaths but out of the packaged jar.
+
+             * slf4j-api  — Paper already puts it on the classpath. Its own paper-api
+                            POM declares org.slf4j:slf4j-api, so bundling a second copy
+                            was pure waste (and a needless version-mismatch risk).
+             * HikariCP, sqlite-jdbc, mariadb-java-client, postgresql — declared in
+                            plugin.yml under `libraries:`, which makes Paper download
+                            them from Maven Central into the server on first start and
+                            add them to this plugin's classpath. That mechanism exists
+                            precisely so plugins do not have to shade and relocate.
+
+           The numbers that motivated this: sqlite-jdbc alone accounted for 11.5 MB of
+           the old jar because it ships native SQLite binaries for five platforms
+           (Linux, Linux-Musl, Windows, Mac, FreeBSD). None of that belongs inside a
+           plugin that is downloaded once and run on one machine.
+
+           WARNING for anyone "tidying" this: these are runtime dependencies. Removing
+           the `provided` scope silently puts them back inside the jar, and removing the
+           `libraries:` entries from plugin.yml makes the plugin fail to load at runtime
+           with NoClassDefFoundError. The two must change together, and
+           tools/ci/verify_jar.sh checks both.
+           =========================================================================== -->
       <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
         <version>${slf4j.version}</version>
+        <scope>provided</scope>
       </dependency>
-
       <dependency>
         <groupId>com.zaxxer</groupId>
         <artifactId>HikariCP</artifactId>
         <version>${hikari.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>org.xerial</groupId>
         <artifactId>sqlite-jdbc</artifactId>
         <version>${sqlite.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>org.mariadb.jdbc</groupId>
         <artifactId>mariadb-java-client</artifactId>
         <version>${mariadb.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>org.postgresql</groupId>
         <artifactId>postgresql</artifactId>
         <version>${postgresql.version}</version>
+        <scope>provided</scope>
       </dependency>
 
       <dependency>
@@ -150,11 +180,11 @@
             <useModulePath>false</useModulePath>
           </configuration>
         </plugin>
-        <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-shade-plugin</artifactId>
-          <version>${shade.plugin.version}</version>
-        </plugin>
+        <!-- maven-shade-plugin is intentionally absent from this build. Nothing is bundled:
+             the server supplies slf4j-api and plugin.yml's `libraries:` field fetches HikariCP
+             and the JDBC drivers at runtime. If bundling is ever reintroduced, note that the
+             shade plugin also needs its ASM dependency overridden to 9.10.1 or newer, because
+             the version shade 3.6.2 carries predates Java 25 class files (major version 69). -->
       </plugins>
     </pluginManagement>
   </build>

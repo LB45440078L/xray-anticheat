@@ -1,0 +1,200 @@
+[CENTER][SIZE=7][B]XRay AntiCheat[/B][/SIZE]
+[SIZE=4][COLOR=#5B9BD5]Statistical ore-vision detection with evidence a moderator can actually read.[/COLOR][/SIZE]
+
+[B]X-ray isn't a cheat you can see. Now it's a case you can prove.[/B][/CENTER]
+
+[HR]
+
+[B][SIZE=5]The problem with every other anti-xray[/SIZE][/B]
+
+Ore-vision cheats leave no trace. No impossible movement, no fly, no reach. Just a player who
+competently walks to diamonds they should not have known were there. So anti-xray plugins end up doing
+one of two things: counting ore per hour, or flagging anyone whose tunnel is suspiciously straight.
+
+Both fail the same way. They cannot tell a lucky player from an informed one, so your staff get a
+number with no argument behind it. And your players find out that digging straight, running a strip
+mine, or exploring a deepslate cave is enough to look guilty.
+
+[B][COLOR=#5B9BD5]XRay AntiCheat asks a different question:[/COLOR][/B] [I]how improbable is this
+player's sequence of behaviour under legitimate mining, compared with mining guided by ore vision?[/I]
+That question has an answer you can put in front of a moderator — and, if it comes to it, in front of
+the player.
+
+[HR]
+
+[B][SIZE=5]Why it is different[/SIZE][/B]
+
+[B]1. It reasons like a statistician, not a tripwire.[/B]
+Five independent evidence families are combined as log-likelihood ratios: buried-discovery rate,
+inter-discovery waiting times, exposure mix, pre-exposure ore targeting, and tunnel geometry. A verdict
+requires both a minimum number of observations and a minimum number of [I]independent[/I] signal
+families — so no single unusual habit, however strong, can convict anyone.
+
+[B]2. Every verdict explains itself.[/B]
+Each assessment writes its own explanation. A moderator opens a player and reads the argument, with the
+actual numbers, instead of being handed a score and told to trust it.
+
+[B]3. It is built to protect the innocent.[/B]
+This is the part that decides whether your staff will ever actually use it:
+[LIST]
+[*][B]Sample-size restraint.[/B] A handful of finds is never enough. Below the configured minimum the verdict is simply [I]insufficient evidence[/I], no matter how extreme the numbers look.
+[*][B]Uncertainty never counts against a player.[/B] If the world state cannot be determined, the observation is set aside rather than guessed. Missing data earns neither suspicion nor credit.
+[*][B]One vein, one discovery.[/B] A player who mines out a seam they could clearly see is not punished for tidiness.
+[*][B]A vein is judged by its most visible block.[/B] Approach a vein from the side and the first block you break is often enclosed — that is not hidden ore, and it is not treated as hidden ore.
+[*][B]Legitimate behaviour is modelled, not punished.[/B] Cave exploration, strip mining, branch mining, straight tunnels and plain good luck are all represented in the model.
+[/LIST]
+
+[B]4. Evidence accumulates instead of resetting.[/B]
+Most detection dies at the restart: the evidence restarts from zero, so a patient cheater is judged on a
+few hours. Here, every assessment reads the player's stored record back in — up to 90 days by default —
+so the numbers describe a player's whole time on your server. That is what makes a ban wave defensible
+rather than a snap judgement.
+
+[B]5. No machine learning. No training. No calibration period.[/B]
+It ships with priors derived from how the game actually generates ore, and it works on install. Nothing
+to label, nothing to train, no telemetry to collect before it becomes useful. Tune it later if your
+world differs — you are tuning a model you can read, not a black box.
+
+[HR]
+
+[B][SIZE=5]Features[/SIZE][/B]
+
+[LIST]
+[*][B]Per-ore statistical models[/B] — diamond, emerald and ancient debris ship separately modelled, because their generation genuinely differs. Add any other ore through configuration.
+[*][B]Exposure classification[/B] — fully exposed, partially exposed, conditionally exposed, hidden, or (honestly) unknown.
+[*][B]Vein reconstruction[/B] — connected-component analysis of the vein, with its size, shape and which parts were reachable.
+[*][B]3D trajectory analysis[/B] — principal-axis direction, straightness, curvature, turning density and vertical drift, in three dimensions, never flattened to a map.
+[*][B]Ore targeting[/B] — whether a player's heading already pointed at an ore [I]before[/I] it could be seen.
+[*][B]Ban waves[/B] — candidates accumulate with a TTL, waves are planned on an interval, and by default a wave [I]proposes[/I] a list for a human to approve. Automatic execution is off out of the box.
+[*][B]Moderator interface[/B] — paginated player list sorted by suspicion, per-player evidence page, per-ore breakdown with its own icons, and all moderation actions behind their own permissions.
+[*][B]Three databases[/B] — SQLite (zero setup), MariaDB, PostgreSQL. All through a HikariCP pool, with connection pooling, batching and forward-only migrations that never destroy existing data.
+[*][B]Never blocks the server[/B] — collection is event-driven and lightweight on the main thread; all analysis and every database operation runs on worker threads by design.
+[*][B]Bounded memory[/B] — per-player buffers have configurable caps and are discarded oldest-first, so hundreds of players do not grow without limit.
+[*][B]Data retention you control[/B] — separate retention per data class, pruned on a schedule, plus a documented privacy posture.
+[*][B]A jar that is actually small[/B] — 330 KB, not the usual 14 MB. It no longer ships five platforms' worth of native SQLite binaries you will never run, and it gets its database drivers from Paper's own library loader on first start. No other plugin required, no bStats, no telemetry, and no outbound connections other than to the database you configure.
+[*][B]Python 3D visualiser[/B] — included. Load a player's history from SQLite, MariaDB or PostgreSQL and see the trajectory, tunnels, veins, exposed vs buried ores and the targeting geometry in an interactive 3D view.
+[*][B]120 automated tests[/B] — the analytical engine, the SQLite integration path and the shipped configuration are all covered by a test suite that runs in a plain JVM.
+[/LIST]
+
+[HR]
+
+[B][SIZE=5]Commands[/SIZE][/B]
+
+[LIST]
+[*][B]/xray help[/B] — command overview
+[*][B]/xray status[/B] — plugin health, storage, queue, tracked players, candidate count
+[*][B]/xray inspect <player>[/B] — full evidence report for a player
+[*][B]/xray stats <player>[/B] — mining statistics per ore
+[*][B]/xray evidence <player>[/B] — the written explanation behind the verdict
+[*][B]/xray history <player>[/B] — recent assessments with band, score, confidence and signal count
+[*][B]/xray gui [PLAIN][player][/PLAIN][/B] — open the moderator interface
+[*][B]/xray banwave [PLAIN][status|plan|approve][/PLAIN][/B] — review candidates, plan a wave, approve and execute it
+[*][B]/xray note <player> <text>[/B] — attach a note to a player's record
+[*][B]/xray reload[/B] — reload configuration without restarting
+[*][B]/xray debug[/B] — toggle debug logging
+[/LIST]
+
+Aliases: [B]/xrayac[/B], [B]/ac[/B].
+
+[HR]
+
+[B][SIZE=5]Permissions[/SIZE][/B]
+
+The permission tree is graded on purpose. Reading a status page, inspecting a player, teleporting to
+them, kicking them and banning them are five different levels of trust — a single umbrella node would
+either over-restrict ordinary moderators or hand every inspector the power to remove players.
+
+[LIST]
+[*][B]xray.inspect[/B] — inspect players, read evidence, open the interface (also the base permission for the command)
+[*][B]xray.alerts[/B] — receive alerts when evidence reaches a threshold
+[*][B]xray.admin[/B] — view plugin status and health
+[*][B]xray.teleport[/B] — teleport to a player from the interface
+[*][B]xray.freeze[/B] — hold a player in place while investigating
+[*][B]xray.kick[/B] — kick from the interface
+[*][B]xray.ban[/B] — ban from the interface
+[*][B]xray.banwave[/B] — review, plan and approve ban waves
+[*][B]xray.reload[/B] — reload configuration
+[*][B]xray.debug[/B] — toggle debug logging
+[*][B]xray.*[/B] — grants all of the above
+[/LIST]
+
+[HR]
+
+[B][SIZE=5]Requirements[/SIZE][/B]
+
+[LIST]
+[*][B]Server:[/B] Paper (declared API version 26.2). Not Folia-compatible.
+[*][B]Java:[/B] 25 or newer.
+[*][B]Database:[/B] none required — SQLite needs no external database server. MariaDB or PostgreSQL for a network of servers sharing one record.
+[*][B]Network on first start:[/B] the plugin fetches its four database libraries from Maven Central the first time the server starts, then caches them. That is the trade that keeps the download at 330 KB instead of 14 MB. Offline servers can pre-seed the cache or point at an internal Maven mirror, and the setup guide covers both.
+[/LIST]
+
+[HR]
+
+[B][SIZE=5]Straight answers to the usual questions[/SIZE][/B]
+
+[B]Will it ban my players on its own?[/B]
+No — not unless you tell it to. It ships in ban-wave mode with automatic execution [B]off[/B]: candidates
+accumulate and a wave is prepared for a moderator to approve. An alert-only mode exists if you want it to
+take no action at all while you evaluate it.
+
+[B]Can it tell me the odds it is wrong?[/B]
+No, and be suspicious of anything that claims to. What it gives you is a calibrated likelihood that the
+observed behaviour matches ore-vision rather than legitimate mining, the sample size behind it, and the
+number of independent signals — which is what a human needs to judge. Treat the output as evidence, not
+a verdict. Your staff make the call.
+
+[B]Will it flag my strip miners and cave explorers?[/B]
+Those behaviours are modelled as legitimate and are represented on both sides of the comparison. The
+gates above exist specifically to stop unusual-but-honest play from reaching a verdict. If you do find a
+false positive, the evidence report will tell you exactly which signal caused it — that is the point of
+the design.
+
+[B]Does it need training or a baseline period?[/B]
+No. It is not a machine-learning system, and it needs no labelled data, no server-specific training and
+no calibration to start working.
+
+[B]What about performance?[/B]
+Every database call and all statistical work runs off the main thread by design, collection is
+event-driven, buffers are bounded, and persistence is batched. [B]We publish no TPS benchmark, because
+we have not measured one on your server[/B] — measure it on yours during the evaluation period before
+you roll it out.
+
+[B]Does it stop other kinds of cheating?[/B]
+No. It does one thing: ore-vision detection, done properly. It will not replace your movement or combat
+anti-cheat.
+
+[HR]
+
+[B][SIZE=5]What you get[/SIZE][/B]
+
+[LIST]
+[*]The built plugin jar, ready to drop into [B]plugins/[/B]
+[*]Fully commented configuration — every option documented, nothing hard-coded
+[*]The Python 3D visualiser, with its dependency list
+[*]Complete documentation: administrator, moderator, architecture, mathematical model, database and privacy
+[*]First-run setup is one file drop plus a restart; the plugin writes its own defaults on first start
+[/LIST]
+
+[CENTER][SIZE=5][B]Buying it[/B][/SIZE][/CENTER]
+
+[CENTER][SIZE=4][COLOR=#5B9BD5][B]{{PRICE}}[/B][/COLOR][/SIZE]
+
+One-time purchase. No subscriptions, no per-server fees, no telemetry.[/CENTER]
+
+[CENTER][B]{{PURCHASE_LINK}}[/B]
+
+Questions before you buy? Ask below and I will answer them here.[/CENTER]
+
+[SPOILER="What it is not"]
+Being clear about the limits, because false confidence is what gets players wrongly banned:
+
+[LIST]
+[*]It is a statistical inference system, not proof. It reports evidence; a human decides.
+[*]It is not warranted to be free of false positives or false negatives. No detector is.
+[*]It detects ore-vision cheating only.
+[*]It cannot distinguish a cheater from a player who was told where to dig by someone else. It measures behaviour, not intent.
+[*]It ships with sensible defaults, not constants measured on your world. The ore priors are the thing most worth tuning to your terrain, and the configuration explains how.
+[*]Folia is not supported.
+[/LIST]
+[/SPOILER]

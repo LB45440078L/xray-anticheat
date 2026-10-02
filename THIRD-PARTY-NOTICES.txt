@@ -1,26 +1,25 @@
 XRay AntiCheat — Third-Party Notices
 =====================================================================================
 
-This project is proprietary (see LICENSE.txt). It bundles and depends upon third-party
-components that remain governed by their own licenses. This file lists them so the
-obligations are visible without unpacking a jar.
+This project is proprietary (see LICENSE.txt). It depends upon third-party components
+that remain governed by their own licenses. This file lists them so the obligations are
+visible without unpacking a jar.
 
-THIS FILE IS THE AUTHORITATIVE LIST. The shaded jar does NOT carry the complete set of
-notices, and cannot: it can only reproduce the license files its dependencies actually
-ship. Verified against the real dependency jars, the position is:
+THE SHORT VERSION: the plugin jar contains only this project's own code and its
+configuration files. It redistributes nothing. Every third-party library it needs is
+either already provided by the server or fetched by the server from Maven Central at
+runtime, under the name and version declared in plugin.yml. That distinction matters for
+licensing, and it is the reason the LGPL section at the bottom is no longer the problem it
+once was.
 
-  carried inside the shaded jar  : PostgreSQL JDBC Driver (META-INF/LICENSE), and
-                                   sqlite-jdbc (two notices under
-                                   META-INF/maven/org.xerial/sqlite-jdbc/), plus the
-                                   nested licence files the PostgreSQL driver itself
-                                   bundles for its SCRAM/stringprep dependencies under
-                                   META-INF/licenses/.
-  NOT carried — the dependency
-  ships no license file at all   : HikariCP, SLF4J API, MariaDB Connector/J.
+Consequences of that design, stated plainly:
 
-A build-time transformer merges the notice files that do exist, so that one is not
-silently discarded in favour of another. It cannot invent the missing ones. If you
-redistribute the JAR, supply the texts below yourself.
+  * There is no third-party code in the jar to carry notices for. Verified: the packaged
+    jar contains zero entries under org/sqlite, org/postgresql, org/mariadb, com/zaxxer
+    or org/slf4j. tools/ci/verify_jar.sh fails the build if that changes.
+  * No build-time notice transformer is needed, because there is nothing to merge.
+  * You are still *depending* on these libraries, and on the servers they are downloaded
+    to. This file is the authoritative list of what and under which licence.
 
 Canonical locations for each license text:
 
@@ -28,51 +27,59 @@ Canonical locations for each license text:
   MIT License ............................ https://opensource.org/license/mit
   BSD 2-Clause License ................... https://opensource.org/license/bsd-2-clause
   GNU LGPL 2.1 ........................... https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
+  GNU GPL 3.0 ............................ https://www.gnu.org/licenses/gpl-3.0.html
 
 
 -------------------------------------------------------------------------------------
-RUNTIME COMPONENTS BUNDLED INTO THE SHADED JAR
+FETCHED BY THE SERVER AT RUNTIME — NOT REDISTRIBUTED IN THE JAR
 -------------------------------------------------------------------------------------
+Declared under `libraries:` in xray-paper/src/main/resources/plugin.yml. The server
+downloads each from Maven Central into its own `libraries/` directory on first start.
 
-  HikariCP
+  HikariCP                                        (com.zaxxer:HikariCP:7.1.0)
     JDBC connection pool.
     License: Apache License 2.0
-    Relocated to io.xrayac.libs.hikari in the shaded jar.
 
-  sqlite-jdbc (org.xerial)
-    SQLite JDBC driver, including its bundled native libraries.
+  sqlite-jdbc                                     (org.xerial:sqlite-jdbc:3.53.4.0)
+    SQLite JDBC driver, including its bundled native libraries for Linux, Linux-Musl,
+    Windows, Mac and FreeBSD. These natives are 11.5 MB of the artifact — the bulk of
+    what used to sit inside this plugin's jar, for platforms it would never run on.
     License: Apache License 2.0
-    DELIBERATELY NOT relocated: it is a JNI library whose native symbol names are derived
-    from the original class names, so relocating it breaks the driver at runtime.
 
-  SLF4J API (org.slf4j)
-    Logging facade.
-    License: MIT License
-
-  PostgreSQL JDBC Driver (org.postgresql)
+  PostgreSQL JDBC Driver                          (org.postgresql:postgresql:42.7.13)
     PostgreSQL connectivity.
     License: BSD 2-Clause License
+    Also depends on: com.ongres.scram / com.ongres.stringprep (Apache License 2.0) for
+    SCRAM authentication support.
 
-  MariaDB Connector/J (org.mariadb.jdbc)
+  MariaDB Connector/J                             (org.mariadb.jdbc:mariadb-java-client:3.5.10)
     MariaDB / MySQL connectivity.
     License: GNU Lesser General Public License 2.1
 
-  SCRAM and stringprep libraries (com.ongres.scram, com.ongres.stringprep)
-    Transitive dependencies of the PostgreSQL driver's SCRAM authentication support.
-    License: Apache License 2.0
 
 -------------------------------------------------------------------------------------
-BUILD-TIME ONLY — NOT DISTRIBUTED IN THE JAR
+PROVIDED BY THE SERVER — NOT REDISTRIBUTED IN THE JAR
 -------------------------------------------------------------------------------------
+
+  SLF4J API (org.slf4j)
+    Logging facade. Paper puts slf4j-api on the classpath itself — paper-api's POM
+    declares org.slf4j:slf4j-api — so bundling a second copy was waste, and a needless
+    version-mismatch risk. This plugin compiles against it and never ships it.
+    License: MIT License
 
   Paper API (`paper-api 26.2.build.129-stable`, io.papermc.paper)
-    Compile-time API used by the xray-paper module.
+    Compile-time and runtime API for the xray-paper module.
     License: GPL-3.0
 
     NOTE: linking a proprietary plugin against a GPL-licensed API is a widely debated
     area in the Minecraft plugin ecosystem, and it is not settled here. If you intend to
     distribute this plugin, treat it as a question for a qualified lawyer rather than as
     a formality.
+
+
+-------------------------------------------------------------------------------------
+BUILD-TIME ONLY — NOT DISTRIBUTED
+-------------------------------------------------------------------------------------
 
   Maven plugins: maven-compiler-plugin, maven-surefire-plugin, maven-shade-plugin
     (and its ASM 9.10.1 override), maven-jar-plugin.
@@ -84,14 +91,28 @@ BUILD-TIME ONLY — NOT DISTRIBUTED IN THE JAR
   optional SQLAlchemy and database drivers. These are imported by the tool at runtime on
   your own machine; they are not bundled here. See `tools/requirements.txt`.
 
+
 -------------------------------------------------------------------------------------
-LGPL NOTE
+LGPL NOTE — IMPROVED BY THE RUNTIME-LIBRARIES DESIGN
 -------------------------------------------------------------------------------------
 
-The MariaDB Connector/J is LGPL-2.1, which is a copyleft license with specific
-obligations on redistribution — including requirements relating to the ability to
-substitute a modified version of the library. It is bundled inside the shaded jar for
-convenience. If you distribute this plugin, satisfy yourself as to those obligations, or
-remove the MariaDB driver from the shaded artifact and ship it alongside instead.
+The MariaDB Connector/J is LGPL-2.1, a copyleft licence with real obligations on
+redistribution, including requirements about the recipient's ability to substitute a
+modified version of the library.
+
+Previously this driver was bundled inside the shaded jar, which made those obligations
+directly applicable to anyone distributing the plugin. It is no longer redistributed
+here: the jar contains none of it, and the server fetches the library from Maven Central
+under its original name and version. The recipient gets the library from its publisher,
+not from this project.
+
+That removes the redistribution question for this plugin. It does not remove the licence
+altogether — the plugin still depends on the library and users still run code under
+LGPL-2.1 — but the obligations now sit with the library's publisher and the server
+operator rather than with the distributor of this plugin.
+
+If you change the build so that any of these libraries is bundled again, this section
+becomes inaccurate and the obligations revert to you. tools/ci/verify_jar.sh exists partly
+to stop that happening by accident.
 
 -------------------------------------------------------------------------------------

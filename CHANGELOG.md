@@ -110,7 +110,32 @@ they had found buried ore.
   69` class files and restricts the API to Java 25's, so the jar now runs on any Java 25, 26 or 27 JVM
   instead of demanding the JDK it was built with. No source changed: nothing in the codebase used a
   Java 26/27-only language or library feature, which the compiler would have rejected. Verified by
-  reading the class-file major version out of all 135 of the plugin's own classes inside the shaded jar.
+  reading the class-file major version out of all 135 of the plugin's own classes inside the packed jar.
+- **The packaged jar shrank from 14,569,935 bytes to 340,823 bytes — 97.7% smaller.** It no longer
+  bundles HikariCP, sqlite-jdbc, the MariaDB or PostgreSQL drivers, or slf4j-api. The four libraries
+  are declared under `libraries:` in `plugin.yml`, which makes Paper fetch them from Maven Central on
+  first start and add them to the plugin's classpath; slf4j-api was already on the server's classpath,
+  since `paper-api`'s own POM depends on it. Two things made the old jar large: sqlite-jdbc's native
+  binaries for five platforms (11.5 MB, 82% of the total, for a plugin that runs on one), and shade
+  bundling the external drivers at all. Our own two sibling modules are still merged in, because they
+  are not published to Maven Central and cannot be fetched at runtime — and because that is easy to get
+  wrong, `tools/ci/verify_jar.sh` now asserts that all three of our module trees are present, that none
+  of the five external libraries is, that `plugin.yml`'s library versions match the POM's, and that the
+  jar stays inside a 4 MB budget.
+- **Relocation is gone**, along with the notice-merge transformers. With no third-party code in the jar
+  there is nothing to relocate or merge, and dropping HikariCP's relocation to `io.xrayac.libs.hikari`
+  removes a maintenance burden that existed only because it was bundled. The shade plugin remains, for
+  the single purpose of merging our own sibling modules.
+- **`THIRD-PARTY-NOTICES.txt` and the third-party section of `LICENSE.txt` rewritten**: the components
+  are depended upon but not redistributed now, so nothing has to be carried in the jar. This also
+  materially improves the licensing position — the LGPL-2.1 MariaDB Connector/J is no longer
+  redistributed by this project, so the obligations that previously attached to distributing the plugin
+  now sit with the library's publisher and the server operator. The GPL-linked Paper API question is
+  unchanged and still flagged.
+- `docs/DEVELOPMENT.md`, `docs/ADMIN_GUIDE.md`, `docs/DATABASE.md` and `README.md` updated for the new
+  packaging, including a measured size breakdown and a new "Servers without internet access" section
+  covering the Maven mirror, cache pre-seeding and manual options.
+- The README's stated test count corrected from a stale 84 to 120.
 
 ## [1.0.0] - 2026-10-01
 

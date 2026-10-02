@@ -51,14 +51,29 @@
   <build>
     <finalName>xray-anticheat-${project.version}</finalName>
     <plugins>
+      <!-- Shade exists here for ONE reason: to merge this module's two sibling modules,
+           xray-core and xray-persistence, into the plugin jar. They are our own code and they
+           are not published to Maven Central, so plugin.yml's `libraries:` field cannot fetch
+           them. Everything external is `provided` scope and therefore absent from the runtime
+           artifact set, so shade has nothing else to pick up.
+
+           What is deliberately NOT here: relocations and resource transformers. There is
+           nothing left to relocate or merge now that the JDBC drivers, HikariCP and slf4j are
+           no longer bundled. Adding an <artifactSet> that would swallow an external library
+           re-introduces the whole problem this build was changed to solve.
+
+           If sqlite-jdbc is ever bundled again, it must NOT be relocated: it is a JNI library
+           whose native symbol names derive from its original package
+           (Java_org_sqlite_core_NativeDB_...), so relocating the Java side leaves the native
+           side exporting the old symbols and the driver dies with UnsatisfiedLinkError on the
+           first connection - a failure no unit test can see. -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
         <dependencies>
-          <!-- Shade 3.6.2 bundles an ASM that predates Java 25 class files
-               (major version 69). Overriding ASM at plugin level lets us shade
-               and relocate the module's bytecode without downgrading the
-               compiler release or the shade plugin. -->
+          <!-- Shade 3.6.2 bundles an ASM that predates Java 25 class files (major version 69)
+               and cannot read them. Overriding ASM at plugin level lets us shade our own
+               modules without downgrading the compiler release or the shade plugin. -->
           <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
@@ -76,74 +91,13 @@
             <goals><goal>shade</goal></goals>
             <configuration>
               <createDependencyReducedPom>false</createDependencyReducedPom>
+              <!-- Explicit rather than implicit: bundle our own modules and nothing else. -->
               <artifactSet>
                 <includes>
                   <include>io.xrayac:xray-core</include>
                   <include>io.xrayac:xray-persistence</include>
-                  <include>com.zaxxer:HikariCP</include>
-                  <include>org.xerial:sqlite-jdbc</include>
-                  <include>org.mariadb.jdbc:mariadb-java-client</include>
-                  <include>org.postgresql:postgresql</include>
-                  <include>org.slf4j:slf4j-api</include>
                 </includes>
               </artifactSet>
-              <relocations>
-                <!-- Relocate HikariCP only. It is pure Java, and it is the library most likely to be
-                     bundled at a different version by another plugin, so isolating it is worthwhile.
-
-                     sqlite-jdbc is deliberately NOT relocated. It is a JNI library: the classes in
-                     org.sqlite.core are bound to native methods whose symbol names are derived from
-                     the original fully-qualified class names (Java_org_sqlite_core_NativeDB_...).
-                     Renaming the Java side leaves the native side exporting the old symbols, and the
-                     driver fails at runtime with UnsatisfiedLinkError the first time a connection is
-                     opened. That failure is invisible to the unit tests, which run against the
-                     unshaded modules, and appears only on a real server — so it is avoided by
-                     construction rather than caught later.
-
-                     The MariaDB and PostgreSQL drivers are pure Java but are likewise left
-                     unrelocated for consistency: they are the only copies of themselves in a server's
-                     plugin directory in practice, and the gain from relocating them is small. -->
-                <relocation>
-                  <pattern>com.zaxxer.hikari</pattern>
-                  <shadedPattern>io.xrayac.libs.hikari</shadedPattern>
-                </relocation>
-              </relocations>
-              <filters>
-                <filter>
-                  <artifact>*:*</artifact>
-                  <excludes>
-                    <exclude>META-INF/*.SF</exclude>
-                    <exclude>META-INF/*.DSA</exclude>
-                    <exclude>META-INF/*.RSA</exclude>
-                    <exclude>module-info.class</exclude>
-                  </excludes>
-                </filter>
-              </filters>
-              <!-- A single ServiceLoader-registry file, otherwise the first
-                   driver wins and MariaDB/PostgreSQL/NativeSQLite collision occurs. -->
-              <transformers>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-                <!-- Merge the license and notice files that the dependencies actually ship, instead of
-                     keeping whichever one shade happens to see last. The PostgreSQL driver and
-                     sqlite-jdbc both ship notices, and one of them was being discarded.
-
-                     Note this is all it can do: HikariCP, slf4j-api and the MariaDB driver ship NO
-                     license file inside their jars, so no transformer can preserve what is not there.
-                     That gap is why THIRD-PARTY-NOTICES.txt exists at the repository root — it is the
-                     authoritative list, because the jar alone is not. -->
-                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                  <resource>META-INF/LICENSE</resource>
-                </transformer>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                  <resource>META-INF/LICENSE.txt</resource>
-                </transformer>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                  <resource>META-INF/NOTICE</resource>
-                </transformer>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
-                  <resource>META-INF/NOTICE.txt</resource>
-                </transformer>
-              </transformers>
             </configuration>
           </execution>
         </executions>

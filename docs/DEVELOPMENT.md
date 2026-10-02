@@ -43,19 +43,44 @@ mvn -pl xray-core test -Dtest=EvidenceEngineTest#caveExplorerIsNotSuspicious
 mvn -pl xray-persistence test -Dtest=PersistenceIntegrationTest
 ```
 
-`mvn clean package` produces `xray-paper/target/xray-anticheat-1.0.0.jar`, a shaded jar that
-bundles `xray-core`, `xray-persistence`, HikariCP and the three JDBC drivers. HikariCP is relocated
-to `io.xrayac.libs.hikari` so it cannot clash with the server or another plugin. The shade plugin's
-own ASM dependency is overridden to 9.10.1, which understands Java 25 class files (`major version
-69`); this is configured in `xray-paper/pom.xml` and is why the build works without downgrading the
-shade plugin.
+`mvn clean package` produces `xray-paper/target/xray-anticheat-1.0.0.jar`, about **330 KB**.
 
-**sqlite-jdbc is deliberately NOT relocated**, despite what an earlier revision of this file claimed.
-It is a JNI library: the classes in `org.sqlite.core` bind to native methods whose symbol names are
-derived from the original fully-qualified class names (`Java_org_sqlite_core_NativeDB_...`). Renaming
-the Java side would leave the native side exporting the old symbols, and the driver would fail on the
-first connection with `UnsatisfiedLinkError` — a failure invisible to unit tests, which run against
-the unshaded modules, and visible only on a real server.
+That figure is the point of the packaging design, so it is worth being explicit about what is and is
+not in the jar:
+
+| In the jar | Why |
+| --- | --- |
+| `io.xrayac.core` | Our own module. Not on Maven Central, so `libraries:` cannot fetch it. |
+| `io.xrayac.persistence` | Our own module. Same reason. |
+| `io.xrayac.paper` | The plugin itself. |
+| `config.yml`, `database.yml`, `gui.yml`, `messages.yml`, `plugin.yml` | Needed to write defaults on first run. |
+
+| **Not** in the jar | Where it comes from |
+| --- | --- |
+| HikariCP | `libraries:` in `plugin.yml`, fetched by the server from Maven Central |
+| `sqlite-jdbc` | `libraries:`, as above (11.5 MB of native binaries for five platforms) |
+| MariaDB Connector/J | `libraries:`, as above |
+| PostgreSQL JDBC driver | `libraries:`, as above |
+| `slf4j-api` | Already on the server's classpath; `paper-api`'s own POM depends on it |
+
+The external artifacts are declared `provided` in the root `pom.xml`, which keeps them on the compile
+and test classpaths while excluding them from the packaged jar, **and** listed under `libraries:` in
+`plugin.yml`. Those two must always change together: dropping the scope bundles them again, and
+dropping the `libraries:` entry means nothing fetches them and the plugin fails to load with
+`NoClassDefFoundError`.
+
+Shade still runs, for one purpose only: merging `xray-core` and `xray-persistence` into the plugin
+jar. There are no relocations and no resource transformers left, because there is no third-party code
+to relocate or merge. The shade plugin's own ASM dependency is still overridden to 9.10.1, which
+understands Java 25 class files (`major version 69`); without that override shade cannot read our
+bytecode and the build fails.
+
+**If sqlite-jdbc is ever bundled again, do NOT relocate it.** It is a JNI library: the classes in
+`org.sqlite.core` bind to native methods whose symbol names are derived from the original
+fully-qualified class names (`Java_org_sqlite_core_NativeDB_...`). Renaming the Java side leaves the
+native side exporting the old symbols, and the driver fails on the first connection with
+`UnsatisfiedLinkError` — a failure invisible to unit tests, which run against the unshaded modules,
+and visible only on a real server.
 
 Surefire is configured with `useModulePath=false` in the parent, so tests run on the classpath
 rather than the module path.
@@ -67,17 +92,23 @@ mvn clean package && bash tools/ci/verify_jar.sh
 ```
 
 The unit and integration tests run against `target/classes` and the module classpath, so they cannot
-see anything the shade plugin does. `tools/ci/verify_jar.sh` (invoked through `bash` — the executable bit is deliberately not
-tracked, so it runs the same everywhere) inspects the finished jar and checks the
-four things that would otherwise only fail on a real server:
+see anything the packaging step does. `tools/ci/verify_jar.sh` (invoked through `bash` — the
+executable bit is deliberately not tracked, so it runs the same everywhere) inspects the finished jar
+and checks the things that would otherwise fail only on a real server:
 
-1. every class the project compiles is `major version 69` (Java 25) — proves the release setting
+1. **the jar is inside its size budget** (4 MB by default, override with a second argument). This is
+   the check that catches a dependency which lost its `provided` scope and silently went back to
+   being bundled — the regression that would take the jar from 330 KB to 14 MB;
+2. **all three of our modules are merged in, and all five external libraries are not**. This is the
+   important pair. The sibling modules must be shaded (they are not on Maven Central) and the
+   external libraries must not be (they are). Getting either half wrong produces a jar that builds
+   cleanly and cannot run;
+3. every class the project compiles is `major version 69` (Java 25) — proves the release setting
    actually took effect;
-2. the five configuration resources are present, so the plugin can write its defaults on first run;
-3. all three JDBC drivers are still registered in `META-INF/services/java.sql.Driver` — if the shade
-   merge dropped a registration, one database backend would fail at runtime only;
-4. sqlite-jdbc was **not** relocated — relocating a JNI library breaks its native symbol names, and
-   the `UnsatisfiedLinkError` appears only when a real connection is opened.
+4. the five configuration resources are present, so the plugin can write its defaults on first run;
+5. `plugin.yml` still declares the `libraries:` entries **at the versions the root `pom.xml` pins**,
+   and does not list slf4j. Version drift between `plugin.yml` and the POM is the worst failure mode
+   of this design: it compiles perfectly and breaks at runtime.
 
 CI runs the same script, so it is also the local reproduction of a CI failure.
 

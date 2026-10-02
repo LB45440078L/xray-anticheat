@@ -65,15 +65,57 @@ The project is a Maven multi-module build with three modules:
 mvn clean package
 ```
 
-The build compiles the modules, runs the test suite (84 tests: 77 unit and 7 SQLite integration
-tests) and produces a shaded plugin jar at:
+The build compiles the modules, runs the test suite (120 tests: 94 analytical core, 13 persistence
+including SQLite integration, 13 paper) and produces the plugin jar at:
 
 ```
 xray-paper/target/xray-anticheat-1.0.0.jar
 ```
 
-The jar is roughly 14 MB because it bundles its dependencies — HikariCP, the SQLite JDBC driver,
-slf4j, and the MariaDB and PostgreSQL JDBC drivers. There is nothing else to install on the server.
+The jar is about **330 KB**. It contains only this project's own code and its configuration files:
+the two sibling modules it needs (`xray-core`, `xray-persistence`) are merged in, because they are
+not published to Maven Central and cannot be fetched at runtime.
+
+Everything external — HikariCP, the SQLite JDBC driver, and the MariaDB and PostgreSQL drivers — is
+**downloaded by the server at runtime** and is deliberately not bundled. The server already supplies
+slf4j itself. Those four artifacts are declared under `libraries:` in `plugin.yml`, which is Paper's
+supported mechanism for exactly this: the server fetches them from Maven Central on first start, adds
+them to the plugin's classpath and caches them in its `libraries/` directory.
+
+This is not a cosmetic saving. Bundling sqlite-jdbc alone cost 11.5 MB, because that artifact ships
+native SQLite binaries for five platforms (Linux, Linux-Musl, Windows, Mac and FreeBSD) and the
+plugin runs on one of them. See [Why the jar is small](#why-the-jar-is-small) for the full figures.
+
+### Why the jar is small
+
+Measured on the 1.0.0 build. The old jar was **14,569,935 bytes**; the new one is **340,823 bytes** —
+a 97.7% reduction.
+
+Where the old jar's size actually went (compressed sizes, as stored in the jar):
+
+| Component | Size | Now |
+| --- | ---: | --- |
+| sqlite-jdbc native libraries | 11,472 KB | fetched by the server |
+| PostgreSQL JDBC driver | 1,082 KB | fetched by the server |
+| MariaDB Connector/J | 680 KB | fetched by the server |
+| this plugin's own code | 276 KB | **still in the jar** |
+| sqlite-jdbc Java classes | 201 KB | fetched by the server |
+| HikariCP | 144 KB | fetched by the server |
+| META-INF and other metadata | 67 KB | mostly gone |
+| slf4j-api | 55 KB | already provided by the server |
+
+The single biggest item was 82% of the total: the native SQLite binaries inside `sqlite-jdbc`, which
+cover Linux, Linux-Musl, Windows, Mac and FreeBSD — five platforms shipped in a download that runs on
+one. That is not something a plugin should carry, and Paper has a supported way to avoid it: the
+`libraries:` field in `plugin.yml`, which makes the server fetch Maven artifacts itself. Using it also
+removes the reason shade and relocation existed in the first place.
+
+Two of the three remaining kilobytes are the plugin's own code. What is left is genuinely what the
+plugin is.
+
+`tools/ci/verify_jar.sh` enforces a **4 MB budget** on the packaged jar and fails the build if a
+dependency that lost its `provided` scope gets bundled again — the regression that would silently
+take it back towards 14 MB.
 
 ---
 
@@ -86,6 +128,12 @@ slf4j, and the MariaDB and PostgreSQL JDBC drivers. There is nothing else to ins
 On first start the plugin creates `plugins/XRayAntiCheat/` and writes its four configuration files
 into it. It also creates the SQLite database file at `plugins/XRayAntiCheat/xray.db` and applies its
 schema. No external database is required for a single server.
+
+**The first start needs network access to Maven Central**, so that the server can fetch the libraries
+listed in `plugin.yml`. Paper caches them, so this happens once. If your server has no outbound
+internet access, see
+[Servers without internet access](docs/ADMIN_GUIDE.md#servers-without-internet-access) — you can
+pre-seed the cache or point the server at an internal Maven mirror.
 
 ---
 

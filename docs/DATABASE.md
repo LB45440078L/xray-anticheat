@@ -532,7 +532,9 @@ storage:
     file: "plugins/XRayAntiCheat/xray.db"   # relative to the server working directory
 ```
 
-- Driver: `org.sqlite.JDBC`, bundled and shaded into the plugin jar.
+- Driver: `org.sqlite.JDBC`. Not bundled in the plugin jar — the server fetches `sqlite-jdbc` on
+  first start from the `libraries:` list in `plugin.yml`, which is what keeps the jar at ~330 KB
+  instead of 14 MB. See `docs/ADMIN_GUIDE.md` for offline servers.
 - The pool is capped at four (SQLite is a single file with a database-level write lock; a larger
   pool buys nothing and can increase contention).
 - Write-ahead logging and a writer busy-timeout are applied to every connection, as datasource

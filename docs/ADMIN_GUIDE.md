@@ -26,18 +26,42 @@ Requirements:
 
 Steps:
 
-1. Build the plugin (`mvn clean package`) or obtain a release jar. The shaded jar is
-   `xray-paper/target/xray-anticheat-1.0.0.jar` (≈14 MB; it bundles HikariCP, sqlite-jdbc, slf4j and
-   the MariaDB and PostgreSQL JDBC drivers).
+1. Build the plugin (`mvn clean package`) or obtain a release jar. The jar is
+   `xray-paper/target/xray-anticheat-1.0.0.jar` (about 330 KB; it contains only the plugin's own
+   code and configuration).
 2. Copy it to `plugins/`.
-3. Start the server.
+3. Start the server. **The first start needs network access to Maven Central** — see below.
+4. Confirm the plugin is healthy with `/xray status`.
 
 On first start the plugin creates `plugins/XRayAntiCheat/`, writes the four configuration files,
 creates and migrates its database (SQLite by default at `plugins/XRayAntiCheat/xray.db`), and logs a
 startup banner showing the storage dialect, schema version, the ore types it is analysing, the
 enforcement mode and the worker count.
 
-There is nothing else to install. Confirm the plugin is healthy with `/xray status`.
+### Servers without internet access
+
+The plugin does not bundle its database drivers. On first start the server downloads the four
+libraries listed under `libraries:` in the plugin's `plugin.yml` — HikariCP, sqlite-jdbc, MariaDB
+Connector/J and the PostgreSQL JDBC driver — from Maven Central, caches them in the server's
+`libraries/` directory and adds them to the plugin's classpath. Paper caches them, so this happens
+once, and it is the trade that takes the plugin download from 14 MB to 330 KB.
+
+If your server cannot reach Maven Central, you have three options, in order of preference:
+
+1. **Point the server at an internal mirror.** Start the server with
+   `-DPAPER_DEFAULT_CENTRAL_REPOSITORY=https://your.maven.mirror/repository/maven-public/` and let it
+   fetch from there. This is the cleanest option if you already run a repository manager.
+2. **Pre-seed the cache.** On a machine that does have access, start the server once with the plugin
+   installed, then copy the server's `libraries/` directory to the offline server. The downloads are
+   named `<artifact>-<version>.jar` and are self-contained.
+3. **Fetch the jars by hand.** Download those four artifacts (plus their transitive dependencies)
+   from Maven Central or your mirror and place them in the server's `libraries/` directory.
+
+Note that a server in this situation does **not** fail quietly. The plugin's storage initialisation
+catch handles `RuntimeException`, not `Error`, so a missing library class
+(`NoClassDefFoundError`) propagates out of `onEnable`: Paper logs the failure and disables the
+plugin. If the plugin is not in `/plugins` after startup, check the console for a library download
+failure before assuming the jar is corrupt.
 
 ---
 

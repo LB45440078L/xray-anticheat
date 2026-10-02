@@ -7,6 +7,27 @@ description: Statistical X-Ray / ore-visibility anti-cheat with explainable evid
 website: https://example.invalid/xray-anticheat
 folia-supported: false
 
+# Downloaded from Maven Central by the server on first start and added to this plugin's
+# classpath, instead of being bundled inside the jar. This is why the shipped jar is a few
+# hundred kilobytes rather than 14 MB: sqlite-jdbc alone carries native SQLite binaries for
+# five platforms, and none of them belongs in a download that runs on one machine.
+#
+# slf4j-api is deliberately NOT listed here - the server already provides it.
+#
+# Consequences worth knowing:
+#   * The first start needs network access to Maven Central. Paper caches what it fetches in
+#     the server's `libraries/` directory; set -DPAPER_DEFAULT_CENTRAL_REPOSITORY=<url> on a
+#     server built without internet access to point at an internal mirror, or pre-seed that
+#     directory.
+#   * These versions are pinned to match the properties in the root pom.xml. Changing one
+#     without the other ships a plugin that compiles and then fails at runtime, so
+#     tools/ci/verify_jar.sh cross-checks them and fails the build if they drift.
+libraries:
+  - com.zaxxer:HikariCP:7.1.0
+  - org.xerial:sqlite-jdbc:3.53.4.0
+  - org.mariadb.jdbc:mariadb-java-client:3.5.10
+  - org.postgresql:postgresql:42.7.13
+
 commands:
   xray:
     description: Inspect mining evidence and manage the anti-cheat.

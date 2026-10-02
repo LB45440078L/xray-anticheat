@@ -9,8 +9,8 @@ it is derived in [`MATHEMATICAL_MODEL.md`](MATHEMATICAL_MODEL.md) and interprete
 
 The implementation is complete across all three modules: the analytical core, the JDBC
 persistence layer, and the Paper adapter (listeners, session tracking, worker pool, alerts,
-commands, GUI and enforcement). `mvn clean package` succeeds and all 84 tests pass — 77 unit
-tests in `xray-core` and 7 SQLite integration tests in `xray-persistence`.
+commands, GUI and enforcement). `mvn clean package` succeeds and all 120 tests pass — 94 in
+`xray-core`, 13 in `xray-persistence` (including SQLite integration tests) and 13 in `xray-paper`.
 
 ---
 

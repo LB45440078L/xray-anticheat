@@ -7,7 +7,7 @@
 # falls back to raw DB-API drivers). SQLAlchemy is listed because it is the
 # recommended path and is what the --demo in-memory store uses.
 numpy>=1.26
-pandas>=2.0
+pandas>=3.0.6
 matplotlib>=3.7
 
 # Optional but recommended: needed for the --demo in-memory SQLite store and

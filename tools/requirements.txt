@@ -6,7 +6,7 @@
 # NOT required: scipy is never imported, and SQLAlchemy is optional (the tool
 # falls back to raw DB-API drivers). SQLAlchemy is listed because it is the
 # recommended path and is what the --demo in-memory store uses.
-numpy>=1.26
+numpy>=2.5.3
 pandas>=2.0
 matplotlib>=3.7
 

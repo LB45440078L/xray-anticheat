@@ -85,6 +85,15 @@ they had found buried ore.
   on the shipped `messages.yml`, including that no console placeholder is unsupplied and that the banner
   art stays out of the block-drawing ranges). 120 tests in total.
 
+- **The repository is published and the project is now automated.** Hosted at
+  <https://github.com/LB45440078L/xray-anticheat> (private, because the project is proprietary).
+  Added: a release workflow that refuses to publish unless the git tag matches the version in *both*
+  `pom.xml` and `plugin.yml`, then builds, tests, verifies the jar and attaches the jar plus a SHA-256
+  checksum to a GitHub Release; Dependabot for Maven, Actions and the Python tooling; a pull request
+  template; and bug-report and security contact issue templates. `docs/DEVELOPMENT.md` section 9 and
+  `CONTRIBUTING.md` document the process. CI's first real run — on the commit that published the
+  repository — passed.
+
 ### Changed
 
 - Menu clicks play a configurable sound (`settings.open-sound`, `settings.click-sound`), resolved per use
@@ -217,4 +226,4 @@ while a server builds confidence in it.
   cheating.
 - Folia is not supported.
 
-[1.0.0]: https://example.invalid/xray-anticheat/releases/tag/v1.0.0
+[1.0.0]: https://github.com/LB45440078L/xray-anticheat/releases/tag/v1.0.0

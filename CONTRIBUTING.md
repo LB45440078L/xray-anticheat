@@ -69,6 +69,34 @@ state its direction: does it make the system more or less likely to flag someone
 - No god classes, no static mutable state, no magic numbers. Thresholds live in configuration with
   a default that is justified somewhere.
 
+## Pull requests and CI
+
+Every push and pull request runs `.github/workflows/build.yml`, which builds with JDK 25, runs the full
+test suite and verifies the packaged jar. Reproduce it locally with:
+
+```bash
+mvn clean verify && bash tools/ci/verify_jar.sh
+```
+
+The pull request template asks you to confirm three things that CI cannot check for you: that no
+dependency gained or lost its `provided` scope, that a version change in `pom.xml` for HikariCP,
+sqlite-jdbc, mariadb-java-client or postgresql was mirrored in `plugin.yml`'s `libraries:` list, and that
+documentation was updated. The first two are silent at build time and fatal at runtime, which is why they
+are asked explicitly.
+
+**Be straight about how far you tested.** "Compiles and the tests pass" is a useful and acceptable answer.
+Do not let it read as though you ran it on a server if you did not — nothing in this project has yet been
+loaded by a real Paper server, so changes to listeners, the interface or storage are unverified at runtime
+unless you say otherwise. If you are unsure about something, say so in the PR rather than leaving it to be
+found later.
+
+## Releasing
+
+Releases are automated on version tags. Change the version in **both** the root `pom.xml` and
+`plugin.yml`, then tag and push; see
+[`docs/DEVELOPMENT.md` section 9](docs/DEVELOPMENT.md#9-continuous-integration-releases-and-publishing)
+for the full process.
+
 ## Commits
 
 - One logical change per commit, with a message that says what changed and why.

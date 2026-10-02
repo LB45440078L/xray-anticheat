@@ -1,0 +1,93 @@
+name: Bug report
+description: Something behaved incorrectly — a false flag, a crash, a command or interface problem.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, a few things that make a report actionable:
+
+        - Run `/xray debug` and `/xray status` first. The debug output and the status line
+          (dialect, schema version, worker count, tracked players) are the fastest way to see
+          what the plugin thinks is happening.
+        - If this is a **false positive**, `/xray evidence <player>` is the important artefact.
+          It names the signal that produced the assessment, with the numbers behind it. A
+          report that includes it can usually be diagnosed directly.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and logs
+      description: |
+        Output of `/xray debug`, `/xray status`, and `/xray evidence <player>` if the report
+        involves a specific player or a suspicion score.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: XRay AntiCheat version
+      description: From the jar filename or `/xray status`.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: server
+    attributes:
+      label: Server build
+      description: Paper version and Minecraft version, as shown in the server's startup log.
+      placeholder: "Paper 26.2 build 129"
+    validations:
+      required: true
+
+  - type: input
+    id: java
+    attributes:
+      label: Java version
+      description: Output of `java -version`.
+      placeholder: "25"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: database
+    attributes:
+      label: Storage backend
+      options:
+        - SQLite (default)
+        - MariaDB
+        - PostgreSQL
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant configuration
+      description: |
+        Paste the parts of config.yml relevant to the report. **Redact database credentials and
+        anything else sensitive.**
+      render: yaml
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: I have removed credentials and personal data from anything I pasted.
+          required: true

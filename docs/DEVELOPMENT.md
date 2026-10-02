@@ -405,7 +405,7 @@ compiler-checked.
 
 The suite is split by module, and the split is deliberate.
 
-### Unit tests (`xray-core`, 77 tests)
+### Unit tests (`xray-core`, 94 tests)
 
 These run in a plain JVM with no Minecraft server and no database. They are the specification of
 the mathematics and the judgement.
@@ -429,7 +429,7 @@ Where possible the expected value is a **closed form** the test can reason out (
 p-value of 12 successes under p = 0.5 is `2·0.5¹²`), so a test cannot pass merely because it
 remembers a buggy answer.
 
-### Integration tests (`xray-persistence`, 7 tests)
+### Integration tests (`xray-persistence`, 13 tests)
 
 `PersistenceIntegrationTest` runs against a **real embedded SQLite database file** created by a
 `@TempDir` and the real `MigrationRunner`/`HikariConnectionProvider`. They exist because compiling
@@ -471,3 +471,65 @@ the independence of the signals, the presence of recorded exculpatory evidence �
 terms of intermediate numbers. If a future change makes the engine flag cave explorers, or lets
 three lucky finds reach a decision, or lets one strong signal family carry a verdict, the tests
 fail. Keep that property: it is what makes the suite a specification rather than a regression net.
+
+---
+
+## 9. Continuous integration, releases and publishing
+
+The repository is hosted at <https://github.com/LB45440078L/xray-anticheat> and is **private**, because
+the project is proprietary (see `LICENSE.txt`). Everything below is automated; none of it needs a
+local checkout.
+
+### Continuous integration — `.github/workflows/build.yml`
+
+Runs on every push to any branch and on every pull request. It builds with JDK 25, runs the whole test
+suite via `mvn clean verify`, runs `bash tools/ci/verify_jar.sh` against the packaged jar, and uploads the
+jar as a workflow artifact. A second job syntax-checks the Python visualiser.
+
+`verify` is used rather than `test` on purpose: it builds the plugin jar, so a broken packaging step fails
+in CI rather than at release time.
+
+### Releases — `.github/workflows/release.yml`
+
+To publish a release:
+
+```bash
+# The version lives in the root pom.xml and in plugin.yml. Change both, then:
+git commit -am "Release 1.0.1"
+git tag v1.0.1
+git push origin main
+git push origin v1.0.1
+```
+
+Pushing the tag runs the release workflow, which:
+
+1. **refuses to continue unless the tag matches both `pom.xml` and `plugin.yml`.** The version is written
+   in three places and they must agree; a jar whose internal version disagrees with its tag is
+   unsupportable on a marketplace, because buyers report one version and you cannot tell what they run.
+   The `pom.xml` version is read with `mvn help:evaluate`, not by parsing the XML.
+2. builds and runs the full test suite;
+3. verifies the packaged jar, including the 4 MB budget;
+4. writes a `.sha256` checksum beside the jar;
+5. creates a GitHub Release named after the tag, attaches the jar and the checksum, and generates the
+   release notes from the commits.
+
+The workflow can also be run manually (`workflow_dispatch`) as a dry run: it validates and builds, and
+publishes nothing.
+
+There is no Maven repository publishing. This is a Paper plugin: the jar is the distribution.
+
+### Dependency updates — `.github/dependabot.yml`
+
+Weekly updates for Maven, the Actions used by the workflows, and the visualiser's Python requirements.
+
+One thing to know: Dependabot can only edit `pom.xml`, but the four runtime libraries are pinned in
+**two** places — the root `pom.xml` properties and the `libraries:` list in `plugin.yml`. A Dependabot PR
+that bumps HikariCP, sqlite-jdbc, mariadb-java-client or postgresql will therefore fail `verify_jar.sh`
+with a version-drift error. That is the guard working as designed. Edit `plugin.yml` in the same PR and it
+goes green.
+
+### Local reproduction
+
+Nothing in CI is special: `mvn clean verify && bash tools/ci/verify_jar.sh` reproduces the build job, and
+the release workflow's only extra step is the tag/version check, which you can run by comparing
+`mvn help:evaluate -Dexpression=project.version -DforceStdout` against the version in `plugin.yml`.

@@ -4,10 +4,11 @@
 #  Builds the project, runs the whole test suite (including the SQLite integration tests)
 #  and verifies the packaged jar.
 #
-#  NOTE: this workflow has been written but never executed — GitHub Actions cannot run in
-#  the environment this repository was assembled in, so the first push is the first real
-#  test of it. Everything it invokes *was* run locally against the same Maven command and
-#  the same script, so the failure mode if any is in the Actions plumbing, not the checks.
+#  NOTE: this workflow was validated by its first real run, on the push that published this
+#  repository (run "build" on be52fb6, completed successfully). Before that it had never been
+#  executed, because GitHub Actions was not reachable from the environment the repository was
+#  assembled in. Everything it invokes is also run locally by `mvn clean verify` plus
+#  `bash tools/ci/verify_jar.sh`.
 # =====================================================================================
 name: build
 

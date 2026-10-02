@@ -4,7 +4,7 @@ main: io.xrayac.paper.XRayAntiCheatPlugin
 api-version: '26.2'
 authors: [XRayAC Contributors]
 description: Statistical X-Ray / ore-visibility anti-cheat with explainable evidence.
-website: https://example.invalid/xray-anticheat
+website: https://github.com/LB45440078L/xray-anticheat
 folia-supported: false
 
 # Downloaded from Maven Central by the server on first start and added to this plugin's

@@ -1,0 +1,108 @@
+# =====================================================================================
+#  XRay AntiCheat — release
+# =====================================================================================
+#  Triggered by pushing a version tag (e.g. `git tag v1.0.0 && git push origin v1.0.0`).
+#
+#  It refuses to release unless the tag agrees with both places the version is written:
+#  the root pom.xml and plugin.yml. A jar whose internal version disagrees with its tag is
+#  a support nightmare on a marketplace — buyers report "1.0.0" and you cannot tell what
+#  they are running.
+#
+#  The release asset is the plugin jar plus a SHA-256 checksum, so a buyer can verify the
+#  download. No Maven repository publishing: this is a Paper plugin, and the jar is the
+#  distribution.
+# =====================================================================================
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  # A dry run that validates and builds without publishing anything.
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # required to create the release
+
+jobs:
+  release:
+    name: Validate, test and publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      # The version lives in three places. Check all three agree before building anything.
+      - name: Check the tag matches the project version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+
+          # Ask Maven rather than parsing the POM: the root artifactId is
+          # `xray-anticheat-parent`, so pattern-matching the version out of the XML is easy
+          # to get wrong and silently yields a bogus value.
+          pom_version=$(mvn -B -ntp -q help:evaluate -Dexpression=project.version -DforceStdout 2>/dev/null | tail -1)
+
+          plugin_version=$(python3 -c "
+          import re, pathlib
+          text = pathlib.Path('xray-paper/src/main/resources/plugin.yml').read_text()
+          m = re.search(r'^version:\s*(\S+)', text, re.M)
+          print(m.group(1).strip().strip(chr(39) + chr(34)) if m else '?')")
+
+          echo "tag=$tag  pom.xml=$pom_version  plugin.yml=$plugin_version"
+
+          if [ "$tag" != "$pom_version" ]; then
+            echo "::error::tag '$tag' does not match the pom.xml version '$pom_version'"
+            exit 1
+          fi
+          if [ "$tag" != "$plugin_version" ]; then
+            echo "::error::tag '$tag' does not match the plugin.yml version '$plugin_version'"
+            exit 1
+          fi
+
+      # Full build and the whole test suite, exactly as CI runs it.
+      - name: Build and test
+        run: mvn -B -ntp clean verify
+
+      # The packaging invariants: 4 MB budget, all three of our module trees present, no
+      # external library bundled, plugin.yml's library versions matching the pom's.
+      - name: Verify the packaged jar
+        run: bash tools/ci/verify_jar.sh
+
+      - name: Checksum the jar
+        run: |
+          set -euo pipefail
+          cd xray-paper/target
+          jar=$(ls xray-anticheat-*.jar | grep -v -- '-original' | head -1)
+          sha256sum "$jar" > "$jar.sha256"
+          echo "--- $jar"
+          cat "$jar.sha256"
+          ls -l "$jar"
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd xray-paper/target
+          jar=$(ls xray-anticheat-*.jar | grep -v -- '-original' | head -1)
+          gh release create "$GITHUB_REF_NAME" \
+            --title "XRay AntiCheat $GITHUB_REF_NAME" \
+            --generate-notes \
+            "$jar" "$jar.sha256"
+
+      - name: Dry run summary
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: 'echo "Not a tag push: validated and built, nothing published."'

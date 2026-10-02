@@ -120,7 +120,7 @@ they had found buried ore.
   instead of demanding the JDK it was built with. No source changed: nothing in the codebase used a
   Java 26/27-only language or library feature, which the compiler would have rejected. Verified by
   reading the class-file major version out of all 135 of the plugin's own classes inside the packed jar.
-- **The packaged jar shrank from 14,569,935 bytes to 340,823 bytes — 97.7% smaller.** It no longer
+- **The packaged jar shrank from 14,569,935 bytes to roughly 341 KB — a 97.7% reduction.** It no longer
   bundles HikariCP, sqlite-jdbc, the MariaDB or PostgreSQL drivers, or slf4j-api. The four libraries
   are declared under `libraries:` in `plugin.yml`, which makes Paper fetch them from Maven Central on
   first start and add them to the plugin's classpath; slf4j-api was already on the server's classpath,

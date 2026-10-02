@@ -88,8 +88,10 @@ plugin runs on one of them. See [Why the jar is small](#why-the-jar-is-small) fo
 
 ### Why the jar is small
 
-Measured on the 1.0.0 build. The old jar was **14,569,935 bytes**; the new one is **340,823 bytes** —
-a 97.7% reduction.
+Measured on the 1.0.0 build. The old jar was **14,569,935 bytes**; the new one is about **340 KB** — a
+97.7% reduction. The exact byte count moves by a few hundred bytes depending on the JDK that built it
+(340,833 locally, 341,565 in CI), because the compressor differs between them; the order of magnitude
+is what matters, and it is enforced by the build.
 
 Where the old jar's size actually went (compressed sizes, as stored in the jar):
 

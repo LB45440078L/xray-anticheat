@@ -511,8 +511,13 @@ Pushing the tag runs the release workflow, which:
 2. builds and runs the full test suite;
 3. verifies the packaged jar, including the 4 MB budget;
 4. writes a `.sha256` checksum beside the jar;
-5. creates a GitHub Release named after the tag, attaches the jar and the checksum, and generates the
-   release notes from the commits.
+5. creates a GitHub Release named after the tag, and attaches the jar and the checksum.
+
+The release body is taken from the **annotated tag message**, so write that message as the release notes -
+it is what users read on the releases page. `--generate-notes` was the original approach and produced an
+almost empty body (a compare link and nothing else), because GitHub builds that changelog from merged pull
+requests and these commits are pushed directly. The tag message is curated at release time, which is both
+more reliable and better reading, so it is the single source of the notes.
 
 The workflow can also be run manually (`workflow_dispatch`) as a dry run: it validates and builds, and
 publishes nothing.

@@ -98,9 +98,14 @@ jobs:
           set -euo pipefail
           cd xray-spigot/target
           jar=$(ls xray-anticheat-*.jar | grep -v -- '-original' | head -1)
+          # The release body comes from the ANNOTATED TAG MESSAGE, not from --generate-notes.
+          # --generate-notes was tried first and produced an almost empty body - just a compare
+          # link - because GitHub's generator builds its changelog from merged pull requests and
+          # these commits are pushed directly. The tag annotation is curated by hand at release
+          # time, so it is the reliable source. Write the tag message as the release notes.
           gh release create "$GITHUB_REF_NAME" \
             --title "XRay AntiCheat $GITHUB_REF_NAME" \
-            --generate-notes \
+            --notes-from-tag \
             "$jar" "$jar.sha256"
 
       - name: Dry run summary

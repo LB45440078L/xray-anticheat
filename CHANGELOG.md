@@ -5,11 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.1] - 2026-10-03
 
-Corrections reported from live play: the moderator interface mishandled clicks, `config.yml` was never
-written to disk, and a legitimate player mining veins that were open at one end could be scored as if
-they had found buried ore.
+A release in two halves: the plugin now targets the **Spigot API only** instead of Paper, and it can serve
+its own **administration web panel** - evidence review, moderation and the audit trail in a browser, with
+nothing else to install and no dependency added.
+
+It also carries corrections reported from live play: the moderator interface mishandled clicks,
+`config.yml` was never written to disk, and a legitimate player mining veins that were open at one end
+could be scored as if they had found buried ore.
 
 ### Fixed
 

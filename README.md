@@ -72,7 +72,7 @@ including SQLite integration, 56 for the administration panel - including a suit
 real HTTP server against a real database - and 13 for the plugin) and produces the plugin jar at:
 
 ```
-xray-spigot/target/xray-anticheat-1.0.0.jar
+xray-spigot/target/xray-anticheat-1.0.1.jar
 ```
 
 The jar is about **330 KB**. It contains only this project's own code and its configuration files:
@@ -131,7 +131,7 @@ take it back towards 14 MB.
 ## Installation
 
 1. Build the jar, or obtain a release jar.
-2. Drop `xray-anticheat-1.0.0.jar` into your server's `plugins/` directory.
+2. Drop `xray-anticheat-1.0.1.jar` into your server's `plugins/` directory.
 3. Start (or restart) the server.
 
 On first start the plugin creates `plugins/XRayAntiCheat/` and writes its four configuration files

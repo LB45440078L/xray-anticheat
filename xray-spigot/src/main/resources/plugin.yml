@@ -1,5 +1,5 @@
 name: XRayAntiCheat
-version: 1.0.0
+version: 1.0.1
 main: io.xrayac.spigot.XRayAntiCheatPlugin
 api-version: '26.2'
 authors: [XRayAC Contributors]

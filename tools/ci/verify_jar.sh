@@ -165,10 +165,17 @@ with zipfile.ZipFile(path) as jar:
     print("  plugin.yml     : no Paper-only keys")
 
 # 6b. No Paper or Adventure API referenced anywhere in the source.
+#
+# Scanned per module rather than by walking the repository root, and guarded by is_file():
+# a recursive walk from "." follows whatever the caller's working directory happens to be
+# (it once walked a user's entire home directory) and can trip over a *directory* whose
+# name ends in .java, which crashes the read instead of reporting anything useful.
 banned = []
-for java in Path(".").rglob("*.java"):
-    if "target" in java.parts:
-        continue
+sources = sorted(
+    path for module in ("xray-core", "xray-persistence", "xray-web", "xray-spigot")
+    for path in Path(module).rglob("*.java")
+    if path.is_file() and "target" not in path.parts)
+for java in sources:
     text = java.read_text(encoding="utf-8", errors="replace")
     for m in re.finditer(r"^import\s+(io\.papermc|net\.kyori)[\w.]*", text, re.M):
         banned.append(f"{java}: {m.group(0)}")
@@ -176,7 +183,7 @@ if banned:
     failures.append(
         "Paper/Adventure API referenced in source: " + "; ".join(banned[:5]) +
         ". This project must compile against the Spigot API only.")
-print("  source         : no io.papermc / net.kyori references")
+print(f"  source         : {len(sources)} files, no io.papermc / net.kyori references")
 
 if failures:
     print("\nFAILURES:", file=sys.stderr)

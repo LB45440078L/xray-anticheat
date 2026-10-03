@@ -218,11 +218,21 @@ public final class AdminWebServer {
                 return;
             }
 
+            // The form body is parsed exactly once per request, here, and then passed down explicitly.
+            //
+            // It used to be cached in the exchange's attribute map so that a handler could call form()
+            // again for free. That was a real bug: under HTTP keep-alive the attribute survives on the
+            // connection, so a later POST reused the *previous* request's fields. In practice the login
+            // body leaked into every subsequent moderation POST on that connection, so the CSRF token
+            // was never seen and every action was rejected with 403. Passing the map as a parameter
+            // makes the lifetime of the data obvious and removes the failure mode entirely.
+            Map<String, String> form = "POST".equals(method) ? parseBody(exchange) : Map.of();
+
             // Unauthenticated surface: the login page and the login submission. Everything else needs
             // a session, and the check happens before any handler runs so a new route cannot forget it.
             if (path.equals("/login")) {
                 if ("POST".equals(method)) {
-                    handleLogin(exchange);
+                    handleLogin(exchange, form);
                 } else {
                     sendHtml(exchange, 200, Pages.login(null, null));
                 }
@@ -252,7 +262,7 @@ public final class AdminWebServer {
             WebSecurity.Session active = session.get();
 
             if (path.equals("/logout")) {
-                if (requireCsrf(exchange, active)) {
+                if (requireCsrf(exchange, active, form)) {
                     security.invalidate(active.id());
                     exchange.getResponseHeaders().set("Set-Cookie", security.clearingCookie());
                     exchange.getResponseHeaders().set("Location", "/login");
@@ -267,10 +277,10 @@ public final class AdminWebServer {
             }
 
             // Every remaining POST changes something, so the CSRF token is mandatory before routing.
-            if (!requireCsrf(exchange, active)) {
+            if (!requireCsrf(exchange, active, form)) {
                 return;
             }
-            routePost(exchange, path, active);
+            routePost(exchange, path, active, form);
         } catch (IOException e) {
             LOGGER.debug("panel request failed while writing a response", e);
         } catch (RuntimeException e) {
@@ -360,7 +370,8 @@ public final class AdminWebServer {
         sendHtml(exchange, 404, Pages.error(404, "No such page."));
     }
 
-    private void routePost(HttpExchange exchange, String path, WebSecurity.Session session) throws IOException {
+    private void routePost(HttpExchange exchange, String path, WebSecurity.Session session,
+                            Map<String, String> form) throws IOException {
         if (path.startsWith("/players/") && path.endsWith("/action")) {
             String raw = path.substring("/players/".length(), path.length() - "/action".length());
             Optional<UUID> id = parseUuid(raw);
@@ -368,12 +379,12 @@ public final class AdminWebServer {
                 sendHtml(exchange, 404, Pages.error(404, "Not a valid player id."));
                 return;
             }
-            handlePlayerAction(exchange, id.get(), session);
+            handlePlayerAction(exchange, id.get(), session, form);
             return;
         }
 
         if (path.equals("/banwave/dismiss")) {
-            Optional<UUID> id = parseUuid(form(exchange).getOrDefault("player", ""));
+            Optional<UUID> id = parseUuid(form.getOrDefault("player", ""));
             if (id.isEmpty()) {
                 sendHtml(exchange, 400, Pages.error(400, "Not a valid player id."));
                 return;
@@ -396,9 +407,8 @@ public final class AdminWebServer {
      * for a player who has already left is reported as "not online" rather than as success, because an
      * interface that claims to have done something it did not quickly stops being trusted.
      */
-    private void handlePlayerAction(HttpExchange exchange, UUID playerId, WebSecurity.Session session)
-            throws IOException {
-        Map<String, String> form = form(exchange);
+    private void handlePlayerAction(HttpExchange exchange, UUID playerId, WebSecurity.Session session,
+                                    Map<String, String> form) throws IOException {
         String action = form.getOrDefault("action", "").trim();
         String reason = form.getOrDefault("reason", "").trim();
         if (reason.length() > 220) {
@@ -495,7 +505,7 @@ public final class AdminWebServer {
     // Authentication
     // ---------------------------------------------------------------------------------------------
 
-    private void handleLogin(HttpExchange exchange) throws IOException {
+    private void handleLogin(HttpExchange exchange, Map<String, String> form) throws IOException {
         String client = clientAddress(exchange);
 
         if (security.isLockedOut(client)) {
@@ -506,7 +516,6 @@ public final class AdminWebServer {
             return;
         }
 
-        Map<String, String> form = form(exchange);
         String username = form.getOrDefault("username", "");
         String password = form.getOrDefault("password", "");
 
@@ -545,8 +554,9 @@ public final class AdminWebServer {
      *
      * @return true when the request may proceed; false when a response has already been sent
      */
-    private boolean requireCsrf(HttpExchange exchange, WebSecurity.Session session) throws IOException {
-        String supplied = form(exchange).getOrDefault("csrf", "");
+    private boolean requireCsrf(HttpExchange exchange, WebSecurity.Session session,
+                                Map<String, String> form) throws IOException {
+        String supplied = form.getOrDefault("csrf", "");
         if (!Credentials.constantTimeEquals(supplied, session.csrfToken())) {
             LOGGER.warn("panel: rejected a request with a missing or invalid CSRF token");
             sendHtml(exchange, 403, Pages.error(403,
@@ -581,27 +591,18 @@ public final class AdminWebServer {
     // ---------------------------------------------------------------------------------------------
 
     /**
-     * Reads and decodes an urlencoded body.
+     * Reads and decodes an urlencoded request body, once.
      *
-     * <p>Cached per exchange so a handler that checks the CSRF token and then reads a field does not
-     * consume the stream twice - the second read would silently return an empty map and every form
-     * would appear blank.
+     * <p>Deliberately stateless: the result is returned to the caller, which passes it down. An earlier
+     * version cached it in the exchange's attribute map, and because those attributes outlive the
+     * request under HTTP keep-alive, a later request on the same connection was handed the previous
+     * request's fields - which silently broke CSRF validation for every moderation action.
+     *
+     * @return the decoded fields; never null
      */
-    private static final String FORM_CACHE = "io.xrayac.web.form";
-
-    private Map<String, String> form(HttpExchange exchange) throws IOException {
-        Object cached = exchange.getAttribute(FORM_CACHE);
-        if (cached instanceof Map<?, ?> map) {
-            @SuppressWarnings("unchecked")
-            Map<String, String> typed = (Map<String, String>) map;
-            return typed;
-        }
+    private Map<String, String> parseBody(HttpExchange exchange) throws IOException {
         String body = readBody(exchange);
-        // A GET carries its parameters in the query string; a POST carries them in the body. Reading
-        // the body first and falling back to the query is what lets the same lookup work for both.
-        Map<String, String> parsed = (body == null || body.isBlank()) ? query(exchange) : decode(body);
-        exchange.setAttribute(FORM_CACHE, parsed);
-        return parsed;
+        return body == null || body.isBlank() ? Map.of() : decode(body);
     }
 
     private String readBody(HttpExchange exchange) throws IOException {

@@ -371,6 +371,33 @@ class AdminPanelIntegrationTest {
     }
 
     @Test
+    @DisplayName("consecutive POSTs on one connection each see their own body")
+    void requestBodiesDoNotLeakBetweenRequests() throws Exception {
+        // Regression test. The form used to be cached in the exchange's attribute map, and under HTTP
+        // keep-alive those attributes outlive the request: the second POST on a reused connection was
+        // handed the first POST's fields. In practice the login body leaked into every later request,
+        // so the CSRF token was never seen and every moderation action was rejected with 403.
+        //
+        // The bug only reproduced when the client reused the connection, which is why it passed on one
+        // JDK and failed on another. This test drives several distinct bodies through one client so the
+        // behaviour is asserted rather than left to the platform.
+        String cookie = signIn();
+        String csrf = csrfOf(getWithCookie("/players/" + STEVE.id(), cookie).body());
+
+        for (String reason : new String[]{"first-note", "second-note", "third-note"}) {
+            HttpResponse<String> response = post("/players/" + STEVE.id() + "/action",
+                    "csrf=" + csrf + "&action=note&reason=" + reason, cookie);
+            assertThat(response.statusCode()).as(reason).isEqualTo(200);
+        }
+
+        // Each body must have been parsed as itself: three distinct notes, in order, not three copies
+        // of whichever one happened to be parsed first.
+        assertThat(actions.forPlayer(STEVE.id(), 10))
+                .extracting(ModeratorActionRepository.StoredAction::note)
+                .containsExactlyInAnyOrder("first-note", "second-note", "third-note");
+    }
+
+    @Test
     @DisplayName("a kick for an offline player reports that nothing happened")
     void kickForOfflinePlayerReportsHonestly() throws Exception {
         String cookie = signIn();

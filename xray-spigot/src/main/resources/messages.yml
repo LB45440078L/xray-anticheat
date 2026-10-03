@@ -1,0 +1,198 @@
+# =====================================================================================
+#  XRay AntiCheat — messages
+# =====================================================================================
+#
+#  Nothing user-facing is hard-coded in Java. Every message the plugin sends is defined here.
+#
+#  Colour codes use the section sign (§) and support both the legacy single-character codes and
+#  hex colours in the form &#rrggbb.
+#
+#  PLACEHOLDERS
+#    %player%      the player's name
+#    %uuid%        the player's UUID
+#    %world%       the world key
+#    %ore%         the ore's display name
+#    %score%       suspicion score, 0..1, to four decimal places
+#    %confidence%  statistical confidence, 0..1, to four decimal places
+#    %strength%    the evidence band (e.g. "strong evidence")
+#    %evidence%    the full multi-line evidence report
+#    %samples%     number of independent observations
+#    %signals%     number of independent signal families
+#    %decibans%    evidence strength in decibans
+#    %time%        a timestamp
+#    %count%       a count (wave size, candidate count, result count)
+#    %moderator%   the acting moderator's name
+#    %reason%      the reason text supplied with a command
+#    %note%        moderator note text
+# =====================================================================================
+
+config-version: 1
+
+prefix: "§8[§bXRay§8] §7"
+
+# -------------------------------------------------------------------------------------
+# Lifecycle
+# -------------------------------------------------------------------------------------
+lifecycle:
+  # Printed once when the plugin enables. The art is plain ASCII on purpose: the block characters that
+  # fancier banners use are exactly the ones an older console font cannot draw, and a banner that
+  # renders as mojibake on someone's console is worse than no banner. Replace it with anything you
+  # like, or set this list to [] to print no banner at all.
+  banner:
+    - ""
+    - '&8&m                                                                              '
+    - '  &b__  ______                  _          _   _  ____ _                _   '
+    - '  &b\ \/ /  _ \ __ _ _   _     / \   _ __ | |_(_)/ ___| |__   ___  __ _| |_ '
+    - '  &b \  /| |_) / _` | | | |   / _ \ | ''_ \| __| | |   | ''_ \ / _ \/ _` | __|'
+    - '  &b /  \|  _ < (_| | |_| |  / ___ \| | | | |_| | |___| | | |  __/ (_| | |_ '
+    - '  &b/_/\_\_| \_\__,_|\__, | /_/   \_\_| |_|\__|_|\____|_| |_|\___|\__,_|\__|'
+    - '  &b               |___/                                                   '
+    - '&8&m                                                                              '
+    - '&7  statistical X-ray detection  &8·&7  v&f%version%  &8·&7  &f%mode%&7 mode  &8·&7  &f%dialect%'
+    - '&7  history &f%lookback%&7 day(s)  &8·&7  &f%ore-count%&7 ore type(s)  &8·&7  &f%threads%&7 worker(s)'
+    - ""
+  startup:
+    - "&7Storage  &8»&7 &f%dialect%&7, schema version &f%schema-version%&7."
+    - "&7Watching &8»&7 &f%ores%"
+  ready: "%prefix%&aEnabled&7. Evidence accumulates across restarts, reaching back &f%lookback%&7 day(s); enforcement mode &f%mode%&7."
+  shutdown: "%prefix%&7Analysis halted and buffered observations flushed. &bGoodbye&7."
+  reload-success: "%prefix%&aConfiguration reloaded&7 — &f%ore-count%&7 ore type(s) live, in-memory observations kept."
+  reload-failed: "%prefix%&cReload failed: &f%error%&c. The previous configuration is still in effect."
+  disabled-by-config: "%prefix%&eAnalysis is disabled in config.yml&7. The plugin will collect nothing."
+  database-unavailable: "%prefix%&cStorage unreachable: &f%error%&c. Analysis continues in memory, but nothing is persisted, assessments cover the current session only, and ban-wave enforcement is suspended."
+  database-recovered: "%prefix%&aStorage restored&7. Buffered observations will now be flushed."
+  schema-migrated: "%prefix%&7Applied &f%count%&7 database migration(s)."
+
+# -------------------------------------------------------------------------------------
+# Alerts — sent to staff with xray.alerts
+# -------------------------------------------------------------------------------------
+alerts:
+  header: "§8§m----------§r §b§lXRay Alert§r §8§m----------"
+  body:
+    - "§7Player    §f%player% §8(%uuid%)"
+    - "§7World     §f%world%"
+    - "§7Verdict   §f%strength% §8(§f%score%§8 suspicion, §f%confidence%§8 confidence§8)"
+    - "§7Evidence  §f%decibans% §7decibans over §f%samples%§7 observation(s) from §f%signals%§7 independent signal(s)"
+    - "§7Top signal§8: §f%top-signal%"
+  footer: "§8§m-----------------------------------"
+  hint: "§7Use §f/xray inspect %player%§7 to review the full evidence."
+  suppressed: "§8(%count% further alerts for this player were suppressed in the last %time% to avoid flooding.)"
+
+# -------------------------------------------------------------------------------------
+# Commands
+# -------------------------------------------------------------------------------------
+commands:
+  no-permission: "%prefix%§cYou do not have permission to do that (§f%permission%§c)."
+  player-not-found: "%prefix%§cNo player named §f%player%§c is known on this server."
+  player-not-online: "%prefix%§c%player% is not online."
+  invalid-arguments: "%prefix%§cInvalid arguments. §7Usage: §f%usage%"
+  web-password-usage: "%prefix%§cUsage: §f/xray webpassword <new-password>§c. The value is hashed before it is stored."
+  web-password-failed: "%prefix%§cThe password was not changed: §f%error%§c."
+  web-password-set: "%prefix%§aAdmin panel password updated. §7The panel was restarted, so any existing session has ended."
+  unknown-subcommand: "%prefix%§cUnknown subcommand §f%subcommand%§c. §7Try §f/xray help§7."
+  self-target: "%prefix%§cYou cannot inspect yourself."
+  world-not-tracked: "%prefix%§e%world% is not in the analysed world list, so there is no data for it."
+  help:
+    - "§b§lXRay AntiCheat§r §8— commands"
+    - "§f/xray status §8— plugin, storage and worker health"
+    - "§f/xray inspect <player> §8— full evidence report and inspection menu"
+    - "§f/xray stats <player> §8— per-ore mining statistics"
+    - "§f/xray evidence <player> §8— current evidence breakdown"
+    - "§f/xray history <player> §8— recent assessments"
+    - "§f/xray gui [player] §8— moderator interface"
+    - "§f/xray banwave [plan|approve|status] §8— review and run a ban wave"
+    - "§f/xray note <player> <text> §8— attach a note to a player's record"
+    - "§f/xray reload §8— reload configuration"
+    - "§f/xray debug §8— toggle debug logging"
+    - "§f/xray webpassword <new-password> §8— set the admin panel password"
+
+status:
+  header: "§b§lXRay AntiCheat — status"
+  lines:
+    - "§7Version       §f%version%"
+    - "§7Mode          §f%mode%  §7(analysis §f%analysis-state%§7, suspicion §f%suspicion-state%§7)"
+    - "§7Storage       §f%dialect% §7schema §f%schema-version%"
+    - "§7Pool          §f%pool%"
+    - "§7Workers       §f%threads% §7(%thread-type%)"
+    - "§7Tracked       §f%tracked%§7 player(s) in memory, §f%queued%§7 observation(s) queued"
+    - "§7Ledger        §f%ledger%§7 excavation record(s)"
+    - "§7Candidates    §f%candidates%§7 ban-wave candidate(s); last wave §f%last-wave%"
+    - "§7Today         §f%assessments%§7 assessment(s), §f%alerts%§7 alert(s)"
+
+stats:
+  header: "§b§lMining statistics §8— §f%player%"
+  no-data: "%prefix%§7No mining data recorded for §f%player%§7 in §f%world%§7."
+  per-ore: "§8- §f%ore%§8: §f%hidden%§7 buried, §f%exposed%§7 exposed, §f%total%§7 total §8(§7hidden fraction §f%fraction%§8)"
+  totals:
+    - "§7Blocks mined   §f%blocks%"
+    - "§7Distance       §f%distance% §7blocks"
+    - "§7Discoveries    §f%total%§7 §8(§f%hidden%§7 buried, §f%exposed%§7 exposed§8)"
+    - "§7Session        §f%session-duration%"
+
+evidence:
+  header: "§b§lEvidence §8— §f%player%"
+  verdict: "§7Verdict: §f%strength% §8(§7score §f%score%§8, §7confidence §f%confidence%§8)"
+  no-evidence: "%prefix%§7No evidence has been accumulated for §f%player%§7 yet. This is not a statement of innocence — it means the player has not yet produced enough observations to assess."
+  explanation-header: "§7Explainable contributions, strongest first:"
+  contribution: "§8  [%direction%§8] §7%component%§8: §f%explanation%"
+  contribution-positive: "§c+%value%"
+  contribution-negative: "§a%value%"
+
+history:
+  header: "§b§lAssessment history §8— §f%player%"
+  no-history: "%prefix%§7No stored assessments for §f%player%§7."
+  entry: "§8- §7%time%§8: §f%strength% §8(§7score §f%score%§8, §7confidence §f%confidence%§8, §7%signals%§7 signal(s)§8)"
+
+# -------------------------------------------------------------------------------------
+# Moderator actions
+# -------------------------------------------------------------------------------------
+actions:
+  inspect-opened: "%prefix%§7Opening inspection for §f%player%§7."
+  teleported: "%prefix%§7Teleported to §f%player%§7."
+  vanish-unavailable: "%prefix%§7Vanish needs an external plugin, so you are §fnot§7 hidden from §f%player%§7."
+  external-plugin-required: "%prefix%§7That action needs an external plugin and is not available here. Nothing was changed for §f%player%§7."
+  spectating: "%prefix%§7Now spectating §f%player%§7. §7No evidence was generated by this."
+  frozen: "%prefix%§f%player%§7 has been frozen."
+  unfrozen: "%prefix%§f%player%§7 is no longer frozen."
+  flagged: "%prefix%§f%player%§7 has been flagged on their record. §7No action was taken against them."
+  alert-acknowledged: "%prefix%§7Alert for §f%player%§7 acknowledged."
+  alerts-rearmed: "%prefix%§7Alerts for §f%player%§7 are live again: the next one arrives without waiting for the throttle."
+  note-instruction: "%prefix%§7To attach a note, use §f/xray note %player% <text>§7 so the text can be collected."
+  note-added: "%prefix%§7Note added to §f%player%§7's record."
+  kick-manual: "%prefix%§f%player%§7 was kicked by §f%moderator%§7: §f%reason%"
+  ban-manual: "%prefix%§f%player%§7 was banned by §f%moderator%§7: §f%reason%"
+  target-kicked: "§cYou have been disconnected by a moderator. §7Reason: §f%reason%"
+  target-banned: "§cYou have been banned. §7Reason: §f%reason%"
+  inspect-note: "§8Opening the moderator interface does not create evidence against this player."
+
+# -------------------------------------------------------------------------------------
+# Automated enforcement
+# -------------------------------------------------------------------------------------
+ban-wave:
+  planning: "%prefix%§7Evaluating §f%candidates%§7 candidate(s) for a ban wave..."
+  none-eligible: "%prefix%§7No wave is due. §f%reason%"
+  planned: "§6§lBan wave planned§r §8— §f%count%§7 candidate(s) awaiting approval. %reason%"
+  approved: "%prefix%§f%moderator%§7 approved a ban wave of §f%count%§7 player(s)."
+  executed: "§4§lBan wave executed§r §8— §f%count%§7 player(s) removed."
+  candidate-list-header: "§b§lCandidates §8(%count%)"
+  candidate-line: "§8- §f%player% §8(§7%strength%, confidence §f%confidence%§8, §7%samples%§7 obs, §7since §f%time%§8)"
+  automatic: "%prefix%§7Automatic enforcement is §aenabled§7; this wave will execute without approval."
+  manual-required: "%prefix%§7Automatic enforcement is §cdisabled§7; approve with §f/xray banwave approve§7."
+
+enforcement:
+  ban-reason: "X-Ray / ore-vision cheating (statistical evidence: %strength%, %samples% observations, %signals% independent signals)"
+  ban-reason-append: " | evidence id %snapshot-id%"
+  kick-reason: "Disconnected pending investigation of your mining behaviour."
+  broadcast: "§8§oA player was removed for using prohibited ore-vision assistance."
+
+# -------------------------------------------------------------------------------------
+# Errors
+# -------------------------------------------------------------------------------------
+errors:
+  config-invalid: "%prefix%§cConfiguration error in §f%file%§c at §f%path%§c: §f%problem%§c. §7The default value is being used."
+  config-fatal: "%prefix%§c§lConfiguration is unusable: §f%problem%§c. §7The plugin will not enable until this is corrected."
+  database: "%prefix%§cDatabase error: §f%error%"
+  analysis: "%prefix%§cAn analysis worker failed: §f%error%§c. §7Other players are unaffected."
+  persistence-dropped: "%prefix%§c%count% observation(s) could not be stored and were dropped. §7The evidence model will under-count this player until storage recovers."
+  permission: "%prefix%§cMissing permission: §f%permission%§c."
+  internal: "%prefix%§cAn internal error occurred. §7See the server console for details."

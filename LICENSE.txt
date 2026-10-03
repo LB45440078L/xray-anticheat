@@ -115,7 +115,7 @@ Third-party components this Software depends upon:
   - PostgreSQL JDBC Driver .............. BSD 2-Clause License
   - MariaDB Connector/J ................. GNU Lesser General Public License 2.1
   - SLF4J API (org.slf4j) ............... MIT License
-  - Paper API (compile and runtime) ..... GPL-3.0
+  - Spigot API (compile and runtime) .... GPL-3.0
 
 NONE of these components is redistributed in the plugin JAR. The JAR contains only the
 Licensor's own code and configuration. At runtime the server supplies SLF4J and the Paper
@@ -124,7 +124,7 @@ Maven Central under their original names and versions, as declared under `librar
 `plugin.yml`. The recipient therefore obtains those libraries from their publishers, not
 from the Licensor, and their notices travel with the copies the recipient receives.
 
-Linking a proprietary plugin against the GPL-licensed Paper/Bukkit API remains a debated
+Linking a proprietary plugin against the GPL-licensed Spigot/Bukkit API remains a debated
 question in the Minecraft plugin ecosystem, and it is not settled here; treat it as a
 matter for a qualified lawyer rather than a formality.
 

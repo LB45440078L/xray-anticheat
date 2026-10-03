@@ -10,7 +10,7 @@
   <packaging>pom</packaging>
 
   <name>XRay AntiCheat (parent)</name>
-  <description>Statistical X-Ray / ore-visibility anti-cheat for Paper Minecraft servers.</description>
+  <description>Statistical X-Ray / ore-visibility anti-cheat for Spigot Minecraft servers.</description>
 
   <!-- The project itself is proprietary. Dependencies keep their own licenses; see
        LICENSE.txt section 8 and THIRD-PARTY-NOTICES.txt. -->
@@ -26,7 +26,8 @@
   <modules>
     <module>xray-core</module>
     <module>xray-persistence</module>
-    <module>xray-paper</module>
+    <module>xray-web</module>
+    <module>xray-spigot</module>
   </modules>
 
   <properties>
@@ -36,7 +37,7 @@
 
     <!-- Dependency versions, pinned. All verified present on Maven Central /
          PaperMC as of the project's authoring date. -->
-    <paper.api.version>26.2.build.129-stable</paper.api.version>
+    <spigot.api.version>26.2-R0.1-SNAPSHOT</spigot.api.version>
     <junit.version>6.1.3</junit.version>
     <assertj.version>3.27.7</assertj.version>
     <mockito.version>5.24.0</mockito.version>
@@ -80,14 +81,17 @@
            the shipped jar is small. `provided` keeps them on the compile and test
            classpaths but out of the packaged jar.
 
-             * slf4j-api  — Paper already puts it on the classpath. Its own paper-api
-                            POM declares org.slf4j:slf4j-api, so bundling a second copy
-                            was pure waste (and a needless version-mismatch risk).
              * HikariCP, sqlite-jdbc, mariadb-java-client, postgresql — declared in
-                            plugin.yml under `libraries:`, which makes Paper download
-                            them from Maven Central into the server on first start and
-                            add them to this plugin's classpath. That mechanism exists
-                            precisely so plugins do not have to shade and relocate.
+                            plugin.yml under `libraries:`, which makes the server download
+                            them from Maven Central on first start and add them to this
+                            plugin's classpath. That mechanism exists precisely so plugins
+                            do not have to shade and relocate.
+             * slf4j-api — also declared under `libraries:` now. This is a REAL change from
+                            the Paper build: paper-api's own POM depends on slf4j-api, so
+                            Paper servers have it on the classpath already, but spigot-api
+                            does NOT and Spigot logs through java.util.logging. Relying on
+                            the server for it would therefore have left the plugin with no
+                            SLF4J on a Spigot server and silently dropped every log line.
 
            The numbers that motivated this: sqlite-jdbc alone accounted for 11.5 MB of
            the old jar because it ships native SQLite binaries for five platforms
@@ -132,9 +136,9 @@
       </dependency>
 
       <dependency>
-        <groupId>io.papermc.paper</groupId>
-        <artifactId>paper-api</artifactId>
-        <version>${paper.api.version}</version>
+        <groupId>org.spigotmc</groupId>
+        <artifactId>spigot-api</artifactId>
+        <version>${spigot.api.version}</version>
         <scope>provided</scope>
       </dependency>
 
@@ -148,15 +152,27 @@
         <artifactId>xray-persistence</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <dependency>
+        <groupId>io.xrayac</groupId>
+        <artifactId>xray-web</artifactId>
+        <version>${project.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
+  <!-- spigot-api is not published to Maven Central, only to the SpigotMC snapshot
+       repository. Snapshot metadata is re-checked on every build, so an offline build needs
+       the artifact already in the local repository (`mvn dependency:get`, or one online
+       build first).
+
+       Deliberately absent: repo.papermc.io. This project compiles against the Spigot API
+       only and does not depend on any Paper artifact. -->
   <repositories>
     <repository>
-      <id>papermc</id>
-      <url>https://repo.papermc.io/repository/maven-public/</url>
-      <releases><enabled>true</enabled></releases>
-      <snapshots><enabled>false</enabled></snapshots>
+      <id>spigotmc-snapshots</id>
+      <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
+      <snapshots><enabled>true</enabled></snapshots>
+      <releases><enabled>false</enabled></releases>
     </repository>
   </repositories>
 

@@ -9,8 +9,9 @@ it is derived in [`MATHEMATICAL_MODEL.md`](MATHEMATICAL_MODEL.md) and interprete
 
 The implementation is complete across all three modules: the analytical core, the JDBC
 persistence layer, and the Paper adapter (listeners, session tracking, worker pool, alerts,
-commands, GUI and enforcement). `mvn clean package` succeeds and all 120 tests pass — 94 in
-`xray-core`, 13 in `xray-persistence` (including SQLite integration tests) and 13 in `xray-paper`.
+commands, GUI and enforcement). `mvn clean package` succeeds and all 176 tests pass — 94 in
+`xray-core`, 13 in `xray-persistence` (including SQLite integration tests), 56 in `xray-web`
+(including HTTP-level tests against a real server and a real database) and 13 in `xray-spigot`.
 
 ---
 
@@ -23,7 +24,7 @@ the statistics and evidence layers, and emerges as a decision, an alert and a re
 
 ```
                          ┌───────────────────────────────────────────────┐
-                         │                 xray-paper                    │
+                         │                 xray-spigot                    │
                          │  (the only module that touches Bukkit/Paper)  │
                          │                                               │
   Minecraft events  ───▶ │  ObservationListener ──▶ PlayerSession ─────┐ │
@@ -64,8 +65,8 @@ The named layers, inward to outward:
 
 | Layer | Lives in | Key types |
 | --- | --- | --- |
-| Adapter / event translation | `xray-paper` | `ObservationListener`, `BukkitWorldView`, `MaterialClassifier`, `ExcavationLedger`, `ConfigLoader`, `PluginSettings` |
-| Observation collection | `xray-paper` | `PlayerSession`, `SessionRegistry`, `PendingPersistence` |
+| Adapter / event translation | `xray-spigot` | `ObservationListener`, `BukkitWorldView`, `MaterialClassifier`, `ExcavationLedger`, `ConfigLoader`, `PluginSettings` |
+| Observation collection | `xray-spigot` | `PlayerSession`, `SessionRegistry`, `PendingPersistence` |
 | Domain (platform-neutral facts) | `xray-core/domain` | `Observation` (sealed), `PlayerRef`, `WorldId`, `VeinObservation`, `ExposureState`, `ExposureResult`, `MiningOrigin` |
 | World / geometry | `xray-core/world`, `geom` | `ExposureAnalyzer`, `VeinAnalyzer`, `BlockKind`, `Vector3`, `BlockPos`, `PrincipalAxes` |
 | Behaviour / analysis window | `xray-core/analysis` | `TrajectoryAnalysis`, `PlayerAnalysisWindow`, `OreDiscovery` |
@@ -73,23 +74,23 @@ The named layers, inward to outward:
 | Statistics | `xray-core/statistics` | `LikelihoodRatios`, `LogOdds`, the distribution types, `SpecialFunctions` |
 | Evidence | `xray-core/evidence` | `EvidenceEngine`, `EvidenceComponent`, 5 components, `SuspicionSnapshot` |
 | Decision | `xray-core/decision` | `DecisionEngine`, `DecisionPolicy`, `BanWavePlanner` |
-| Actions / enforcement | `xray-paper/enforcement`, `alert`, `command`, `gui` | `EnforcementService`, `AlertService`, `XRayCommand`, `GuiManager` |
+| Actions / enforcement | `xray-spigot/enforcement`, `alert`, `command`, `gui` | `EnforcementService`, `AlertService`, `XRayCommand`, `GuiManager` |
 | Persistence | `xray-persistence` | `ConnectionProvider`, `TransactionManager`, `MigrationRunner`, seven `Jdbc*Repository`, wired by `PersistenceBundle` (paper) |
-| Composition root | `xray-paper` | `XRayAntiCheatPlugin` |
+| Composition root | `xray-spigot` | `XRayAntiCheatPlugin` |
 
 The critical property of this arrangement is the direction of dependency: nothing in
-`xray-core` depends on `xray-paper` or on Bukkit, and `xray-persistence` depends only on
+`xray-core` depends on `xray-spigot` or on Bukkit, and `xray-persistence` depends only on
 `xray-core`. The arrows point inward.
 
 ---
 
-## 2. The three modules, and why `xray-core` has no Minecraft dependency
+## 2. The four modules, and why `xray-core` has no Minecraft dependency
 
 ```
 xray-anticheat-parent (pom)
 ├── xray-core          pure Java; depends only on slf4j-api
 ├── xray-persistence   depends on xray-core + HikariCP + the three JDBC drivers
-└── xray-paper         depends on xray-core + xray-persistence + paper-api
+└── xray-spigot         depends on xray-core + xray-persistence + spigot-api
 ```
 
 `xray-core`'s `pom.xml` declares exactly one runtime dependency (`slf4j-api`) and no
@@ -102,7 +103,7 @@ Minecraft API. This is not tidiness for its own sake; it buys four concrete thin
    in seconds. A core that imported `org.bukkit.World` could not be tested this way.
 2. **Portability across server platforms.** The mathematics is expressed against
    `Vector3`/`BlockPos` and the outbound ports, not against Bukkit. Moving the adapter to a
-   different server platform would touch `xray-paper` alone.
+   different server platform would touch `xray-spigot` alone.
 3. **No accidental server-thread work.** The core cannot load a chunk or start a synchronous
    database call, because it holds no `World` and no `Connection`. This is what makes the
    threading model in §5 enforceable rather than aspirational: the types simply do not permit
@@ -131,7 +132,7 @@ implementation. The core defines the port; an adapter implements it.
 plainly: implementations are **not** required to be thread-safe, all calls happen on the
 server thread during observation collection, and implementations must never block on I/O.
 
-- **Production adapter:** `io.xrayac.paper.adapter.BukkitWorldView`. It reads live chunks via
+- **Production adapter:** `io.xrayac.spigot.adapter.BukkitWorldView`. It reads live chunks via
   `Bukkit.getWorld(...)`, and its `isLoaded` deliberately checks `World#isChunkLoaded` (chunk
   coordinates, not block coordinates) rather than reading a block in an unloaded chunk — a
   block read there would make the server synchronously load the chunk, a latency spike triggered
@@ -194,7 +195,7 @@ call from the server thread.**
 `JdbcRepository.read`/`write` is the single place where `SQLException` is translated.
 
 The bundle that owns the pool and the seven concrete repositories, and tracks degraded
-availability, is `io.xrayac.paper.persistence.PersistenceBundle`.
+availability, is `io.xrayac.spigot.persistence.PersistenceBundle`.
 
 ---
 
@@ -240,7 +241,7 @@ break a protection plugin refused was not mined and must not count. `GuiManager`
 `Listener` for `InventoryClickEvent`/`InventoryCloseEvent`. This is Observer: the plugin reacts
 to server events rather than polling.
 
-### Adapter — `xray-paper`, and value translation
+### Adapter — `xray-spigot`, and value translation
 
 The Paper module is an Adapter in the ports-and-adapters sense: `ObservationListener` and
 `BukkitWorldView` translate Bukkit events and live world state into the core's plain values;
@@ -514,7 +515,60 @@ The statistical reasoning behind each of these is in
 
 ---
 
-## 8. Cross-cutting choices and known limitations
+
+## 8. The administration panel
+
+The panel is its own module, `xray-web`, and it depends on `xray-core` and the JDK and on nothing else.
+That constraint is the design. The panel exists to make evidence reviewable, and it is not allowed to
+make the plugin heavier, less portable or harder to reason about in exchange.
+
+```
+xray-web          HTTP server, routing, rendering, sessions, CSRF, escaping
+    |             depends on: xray-core (repository interfaces + domain records), the JDK
+    v
+xray-spigot       implements ModerationActions against the live server,
+    |             wires the repositories in, starts and stops the server with the plugin
+    v
+Bukkit/Spigot     kick, ban, unban, message - dispatched onto the server thread
+```
+
+### Why `com.sun.net.httpserver` and not a framework
+
+Every web framework, JSON library and template engine would end up inside the plugin jar, and the point
+of the packaging work was to keep that jar small. The JDK's HTTP server is not comfortable: routing,
+cookie parsing, form decoding and static-asset serving are written by hand here. But each of those is a
+place where a convenience becomes a vulnerability, so writing them explicitly means each one is visible
+and directly testable. The JSON writer escapes `<`, `>`, `&` and the Unicode line separators even though
+JSON does not require it, because its output is sometimes embedded in an HTML document.
+
+### Why the data flows through the repository interfaces
+
+`xray-web` reads through the same interfaces the engine writes through. It holds no SQL, and it cannot
+write player data at all: its only write is an audit entry, and its only path to a game effect is
+`ModerationActions`. A panel able to adjust the evidence it is meant to be reviewing would undermine the
+reason this project produces explanations instead of scores.
+
+### Threading
+
+The panel runs its own small, bounded thread pool. Bukkit's API is not thread-safe, so
+`BukkitModerationActions` re-dispatches every mutating call onto the server thread. That is why those
+methods report whether an action was *accepted* rather than *completed*, and why the interface wording
+follows the distinction ("not delivered" rather than "delivered").
+
+### Why the security controls look the way they do
+
+Each control in `WebSecurity` and `AdminWebServer` answers a specific attack, and the reasoning sits next
+to it in the code rather than here. Two are unusual enough to repeat:
+
+- **The lockout is keyed by address on purpose.** A single global counter would let one attacker lock
+  every administrator out, turning the throttle itself into a denial of service.
+- **`X-Forwarded-For` is trusted only when the operator says a proxy is in front.** Trusting it
+  unconditionally would let anyone forge a new address on every attempt and never be locked out at all.
+
+The threat model is explicit about what it excludes: an attacker with local access to the machine, or one
+who can read the configuration file. The panel is built for loopback or a tunnel the operator controls,
+and it refuses to bind anywhere else without an explicit decision.
+## 9. Cross-cutting choices and known limitations
 
 - **Immutability everywhere it can be had.** Domain types are `record`s; lists and maps are
   copied with `List.copyOf`/`Map.copyOf`/`Set.copyOf`; the components and engines are stateless

@@ -1,0 +1,123 @@
+name: XRayAntiCheat
+version: 1.0.0
+main: io.xrayac.spigot.XRayAntiCheatPlugin
+api-version: '26.2'
+authors: [XRayAC Contributors]
+description: Statistical X-Ray / ore-visibility anti-cheat with explainable evidence.
+website: https://github.com/LB45440078L/xray-anticheat
+
+# Downloaded from Maven Central by the server on first start and added to this plugin's
+# classpath, instead of being bundled inside the jar. This is why the shipped jar is a few
+# hundred kilobytes rather than 14 MB: sqlite-jdbc alone carries native SQLite binaries for
+# five platforms, and none of them belongs in a download that runs on one machine.
+#
+# This is NOT a Paper-only feature. Spigot implements it too: org.bukkit.plugin.PluginDescriptionFile
+# exposes getLibraries(), and org.bukkit.plugin.java.LibraryLoader resolves the coordinates with
+# Maven Resolver and injects them into this plugin's class loader.
+#
+# Why slf4j is listed here, unlike in the previous Paper build: paper-api's own POM depends on
+# slf4j-api, so a Paper server already has it on the classpath. spigot-api does NOT, and Spigot
+# logs through java.util.logging. Without these two entries the plugin would load with no SLF4J
+# at all and every log line would be silently discarded, so they are declared rather than assumed.
+# slf4j-jdk14 is the binding that routes SLF4J into java.util.logging - the same console.
+#
+# Consequences worth knowing:
+#   * The first start needs network access to Maven Central. The server caches what it fetches
+#     in its own libraries directory, so this happens once. On a server without internet
+#     access, either run one start on a connected machine and copy that directory across, or
+#     place the jars there by hand - Spigot has no documented repository-override property.
+#   * These versions are pinned to match the properties in the root pom.xml. Changing one
+#     without the other ships a plugin that compiles and then fails at runtime, so
+#     tools/ci/verify_jar.sh cross-checks them and fails the build if they drift.
+libraries:
+  - com.zaxxer:HikariCP:7.1.0
+  - org.xerial:sqlite-jdbc:3.53.4.0
+  - org.mariadb.jdbc:mariadb-java-client:3.5.10
+  - org.postgresql:postgresql:42.7.13
+  - org.slf4j:slf4j-api:2.0.20
+  - org.slf4j:slf4j-jdk14:2.0.20
+
+commands:
+  xray:
+    description: Inspect mining evidence and manage the anti-cheat.
+    usage: |
+      /xray help
+      /xray status
+      /xray inspect <player>
+      /xray stats <player>
+      /xray evidence <player>
+      /xray history <player>
+      /xray gui [player]
+      /xray banwave [status|plan|approve]
+      /xray note <player> <text>
+      /xray reload
+      /xray debug
+      /xray webpassword <new-password>
+    aliases: [xrayac, ac]
+    permission: xray.inspect
+    permission-message: "You do not have permission to inspect mining evidence."
+
+permissions:
+  # The permission tree is graded deliberately. Reading a status page, inspecting a player,
+  # teleporting to them, kicking them and banning them are five different levels of trust; a
+  # single umbrella node would either over-restrict ordinary moderators or hand every inspector
+  # the power to remove players.
+  xray.*:
+    description: Grants every XRay AntiCheat permission.
+    default: op
+    children:
+      xray.admin: true
+      xray.alerts: true
+      xray.inspect: true
+      xray.teleport: true
+      xray.kick: true
+      xray.ban: true
+      xray.banwave: true
+      xray.freeze: true
+      xray.reload: true
+      xray.debug: true
+      xray.web: true
+
+  xray.admin:
+    description: View plugin status and health.
+    default: op
+
+  xray.alerts:
+    description: Receive alerts when a player's evidence reaches a threshold.
+    default: op
+
+  xray.inspect:
+    description: Inspect players, read evidence reports and open the moderator interface.
+    default: op
+
+  xray.teleport:
+    description: Teleport to a player from the inspection interface.
+    default: op
+
+  xray.freeze:
+    description: Hold a player in place while investigating.
+    default: op
+
+  xray.kick:
+    description: Kick a player from the inspection interface.
+    default: op
+
+  xray.ban:
+    description: Ban a player from the inspection interface.
+    default: op
+
+  xray.banwave:
+    description: Review, plan and approve ban waves.
+    default: op
+
+  xray.reload:
+    description: Reload the plugin configuration.
+    default: op
+
+  xray.debug:
+    description: Toggle debug logging.
+    default: op
+
+  xray.web:
+    description: Set the administration panel password.
+    default: op

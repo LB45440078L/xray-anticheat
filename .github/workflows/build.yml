@@ -61,7 +61,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: xray-anticheat-jar
-          path: xray-paper/target/xray-anticheat-*.jar
+          path: xray-spigot/target/xray-anticheat-*.jar
           if-no-files-found: error
 
   python-tool:

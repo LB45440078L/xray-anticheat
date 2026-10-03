@@ -30,6 +30,18 @@ public interface ModeratorActionRepository {
     /** Actions taken by a moderator, newest first. */
     List<StoredAction> byModerator(UUID moderatorId, int limit);
 
+    /**
+     * The most recent actions across every player, newest first.
+     *
+     * <p>Exists for the audit view: the per-player and per-moderator queries answer "what happened to
+     * this player" and "what did this moderator do", but neither can answer "what has been done
+     * lately", which is the question an audit trail is actually opened to answer.
+     *
+     * @param limit maximum rows to return
+     * @return the most recent actions, newest first
+     */
+    List<StoredAction> recent(int limit);
+
     /** A recorded action. */
     record StoredAction(String id, UUID playerId, UUID moderatorId, String action, String note,
                         Instant performedAt) {

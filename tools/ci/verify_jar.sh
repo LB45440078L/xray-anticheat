@@ -8,15 +8,16 @@
 #
 #    1. the jar is inside its size budget — the whole point of the runtime-libraries
 #       design, and the thing that silently regresses if a `provided` scope is dropped;
-#    2. all three of OUR modules are merged in, and all five EXTERNAL libraries are not.
-#       This pair is the important one: our two sibling modules are not on Maven Central,
-#       so `libraries:` cannot fetch them and they must be shaded; everything external must
-#       be fetched and must not be shaded;
+#    2. all of OUR modules are merged in, and none of the EXTERNAL libraries is. This pair
+#       is the important one: our sibling modules are not on Maven Central, so `libraries:`
+#       cannot fetch them and they must be shaded; everything external must be fetched and
+#       must not be shaded;
 #    3. every class we compile is Java 25 bytecode (major 69);
-#    4. the five configuration resources are inside the jar;
-#    5. plugin.yml still declares the `libraries:` entries, and their versions match the
-#       properties in the root pom.xml. Drift here produces a plugin that compiles cleanly
-#       and then dies at runtime, which is the worst possible failure mode.
+#    4. the configuration resources are inside the jar;
+#    5. plugin.yml declares the `libraries:` entries — including BOTH SLF4J entries — and
+#       their versions match the properties in the root pom.xml;
+#    6. the source references no Paper or Adventure API, and plugin.yml carries no
+#       Paper-only keys. This project targets the Spigot API only.
 #
 #  Usage: bash tools/ci/verify_jar.sh [path-to-jar] [max-bytes]
 # =====================================================================================
@@ -24,7 +25,7 @@ set -euo pipefail
 
 jar="${1:-}"
 if [ -z "$jar" ]; then
-  jar=$(ls xray-paper/target/xray-anticheat-*.jar 2>/dev/null | grep -v '\-original' | head -1 || true)
+  jar=$(ls xray-spigot/target/xray-anticheat-*.jar 2>/dev/null | grep -v '\-original' | head -1 || true)
 fi
 if [ -z "$jar" ] || [ ! -f "$jar" ]; then
   echo "FAIL: no jar found (pass one as an argument, or run mvn package first)" >&2
@@ -58,10 +59,11 @@ with zipfile.ZipFile(path) as jar:
             f"jar is {size:,} bytes, over the {budget:,}-byte budget. The usual cause is a "
             f"dependency that lost its `provided` scope in pom.xml, so shade bundled it again.")
 
-    # 2a. Our three modules must all be merged into the jar.
+    # 2a. Our modules must all be merged into the jar.
     for prefix, module in (("io/xrayac/core/", "xray-core"),
                            ("io/xrayac/persistence/", "xray-persistence"),
-                           ("io/xrayac/paper/", "xray-paper")):
+                           ("io/xrayac/web/", "xray-web"),
+                           ("io/xrayac/spigot/", "xray-spigot")):
         found = sum(1 for n in names if n.startswith(prefix) and n.endswith(".class"))
         print(f"  {module:<15}: {found:>4} classes")
         if not found:
@@ -74,14 +76,14 @@ with zipfile.ZipFile(path) as jar:
                         ("org/postgresql/", "postgresql"),
                         ("org/mariadb/", "mariadb-java-client"),
                         ("com/zaxxer/", "HikariCP"),
-                        ("org/slf4j/", "slf4j-api"),
+                        ("org/slf4j/", "slf4j"),
                         ("io/xrayac/libs/", "relocated third-party classes")):
         found = sum(1 for n in names if n.startswith(prefix))
         if found:
             failures.append(
                 f"{lib} is bundled in the jar ({found} entries). It must be fetched at "
                 f"runtime instead: check its scope in the root pom.xml is `provided`.")
-    print("  externals      : all 5 absent from jar (fetched at runtime)")
+    print("  externals      : none bundled (all fetched at runtime)")
 
     # 3. Our bytecode version.
     ours = [n for n in names if n.startswith("io/xrayac/") and n.endswith(".class")]
@@ -93,11 +95,21 @@ with zipfile.ZipFile(path) as jar:
             failures.append(
                 f"expected every plugin class to be major 69 (Java 25), got {dict(majors)}")
 
-    # 4. Resources needed to write defaults on first run.
-    for resource in ("config.yml", "database.yml", "messages.yml", "gui.yml", "plugin.yml"):
+    # 4. Resources: the configs needed to write defaults on first run, and the panel's assets.
+    #    The assets matter as much as the configs and are easier to lose - they live in a different
+    #    module's resources, so a build change that stops merging them would ship a panel that serves
+    #    unstyled HTML and an unscripted page, which looks like a broken install and is invisible to
+    #    every test that renders HTML as a string.
+    configs = ("config.yml", "database.yml", "messages.yml", "gui.yml", "plugin.yml")
+    for resource in configs:
         if resource not in names:
             failures.append(f"missing resource in jar: {resource}")
-    print("  resources      : checked 5")
+    for asset in ("web/app.css", "web/app.js"):
+        if asset not in names:
+            failures.append(
+                f"missing panel asset in jar: {asset}. The panel would serve an unstyled, "
+                f"unscripted page - it would still work, which is what makes it easy to miss.")
+    print(f"  resources      : {len(configs)} configs + 2 panel assets")
 
     # 5. plugin.yml declares the runtime libraries, at the versions the pom pins.
     plugin_yml = jar.read("plugin.yml").decode("utf-8", "replace")
@@ -116,6 +128,8 @@ with zipfile.ZipFile(path) as jar:
             "org.xerial:sqlite-jdbc": props.get("sqlite.version"),
             "org.mariadb.jdbc:mariadb-java-client": props.get("mariadb.version"),
             "org.postgresql:postgresql": props.get("postgresql.version"),
+            "org.slf4j:slf4j-api": props.get("slf4j.version"),
+            "org.slf4j:slf4j-jdk14": props.get("slf4j.version"),
         }
         for coord, want in expected.items():
             got = declared.get(coord)
@@ -127,13 +141,42 @@ with zipfile.ZipFile(path) as jar:
                 failures.append(
                     f"{coord} version drift: plugin.yml says {got}, pom.xml pins {want}. "
                     f"Update both together or the plugin breaks at runtime only.")
-        print(f"  libraries      : {len(declared)} declared in plugin.yml, versions match pom")
+        print(f"  libraries      : {len(declared)} declared, versions match pom")
 
-    if any("slf4j" in coord for coord in declared):
-        failures.append(
-            "plugin.yml declares slf4j under `libraries:`: the server already provides "
-            "slf4j-api, so fetching a second copy risks a provider mismatch. Remove it.")
-    print("  slf4j-api      : correctly not declared (server provides it)")
+    # 5b. SLF4J must be declared. This INVERTS the old Paper-build check, deliberately.
+    #     Spigot provides no SLF4J: spigot-api does not depend on slf4j-api (spigot-api did)
+    #     and Spigot logs through java.util.logging. Missing the API means the plugin throws
+    #     NoClassDefFoundError while loading; missing the binding means SLF4J silently
+    #     discards every message. Both are near-invisible in testing.
+    for required in ("org.slf4j:slf4j-api", "org.slf4j:slf4j-jdk14"):
+        if required not in declared:
+            failures.append(
+                f"{required} is missing from `libraries:`. Spigot does not provide SLF4J, so "
+                f"without the API the plugin fails to load and without a binding every log "
+                f"line is silently discarded.")
+    print("  slf4j          : api + jdk14 binding both declared (required on Spigot)")
+
+    # 6a. No Paper-only keys in the shipped plugin.yml.
+    for key in ("folia-supported", "paper-skip-libraries", "bootstrapper"):
+        if re.search(rf"^{re.escape(key)}\s*:", plugin_yml, re.M):
+            failures.append(
+                f"plugin.yml declares `{key}`, which is Paper-only. This plugin targets the "
+                f"Spigot API only; Spigot does not read it.")
+    print("  plugin.yml     : no Paper-only keys")
+
+# 6b. No Paper or Adventure API referenced anywhere in the source.
+banned = []
+for java in Path(".").rglob("*.java"):
+    if "target" in java.parts:
+        continue
+    text = java.read_text(encoding="utf-8", errors="replace")
+    for m in re.finditer(r"^import\s+(io\.papermc|net\.kyori)[\w.]*", text, re.M):
+        banned.append(f"{java}: {m.group(0)}")
+if banned:
+    failures.append(
+        "Paper/Adventure API referenced in source: " + "; ".join(banned[:5]) +
+        ". This project must compile against the Spigot API only.")
+print("  source         : no io.papermc / net.kyori references")
 
 if failures:
     print("\nFAILURES:", file=sys.stderr)

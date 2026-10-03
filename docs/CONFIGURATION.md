@@ -1,6 +1,6 @@
 # Configuration
 
-XRay AntiCheat is configured by four YAML files shipped in `xray-paper/src/main/resources/`,
+XRay AntiCheat is configured by four YAML files shipped in `xray-spigot/src/main/resources/`,
 plus `plugin.yml` which declares the command and permissions:
 
 | File | Read by | Purpose |
@@ -207,6 +207,31 @@ Note: the `PendingPersistence` queue bound (1,000,000) and the ledger pending-wr
 | _removed_ | — | `debug.log-database` and `debug.log-paths` were parsed but wired to nothing. They have been deleted rather than left as switches an administrator could flip with no effect. |
 
 ---
+
+### The administration panel (`web`)
+
+The panel is off by default. Every key falls back to a safe default, so an existing `config.yml` that
+predates this section yields a disabled panel rather than an unexpected HTTP server.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `web.enabled` | `false` | Whether the panel starts at all. |
+| `web.bind-address` | `127.0.0.1` | Interface to bind. Anything non-loopback requires `allow-non-loopback`. |
+| `web.port` | `8099` | TCP port. |
+| `web.username` | `admin` | The single administrator account. |
+| `web.password-hash` | `''` | A PBKDF2-SHA256 hash. **Leave empty** and a strong password is generated, printed once, and only its hash stored. `password-hash` is never a plaintext password and the loader will not accept one: a value that is not in the stored `pbkdf2-sha256$...` form simply never verifies. |
+| `web.session-minutes` | `60` | Idle session lifetime. There is also a fixed 12-hour absolute cap. |
+| `web.max-failed-logins` | `5` | Failures from one address before lockout. |
+| `web.lockout-minutes` | `15` | Lockout duration. |
+| `web.page-size` | `25` | Rows per page in the listings (1-500). |
+| `web.allow-non-loopback` | `false` | Must be true before a non-loopback `bind-address` is accepted. |
+| `web.read-only` | `false` | When true, moderation actions are refused and the panel is inspection-only. |
+| `web.behind-proxy` | `false` | Trust `X-Forwarded-For`. Only safe behind a proxy you control. |
+
+If any value is unusable - an out-of-range port, a missing password hash, a non-loopback address without
+the flag - the panel **refuses to start** and logs each problem. It never starts in a degraded state,
+because every one of those cases would mean exposing a console the operator did not intend. See
+`ADMIN_GUIDE.md` section 8.
 
 ## 2. `database.yml`
 

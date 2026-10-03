@@ -33,7 +33,7 @@ Canonical locations for each license text:
 -------------------------------------------------------------------------------------
 FETCHED BY THE SERVER AT RUNTIME — NOT REDISTRIBUTED IN THE JAR
 -------------------------------------------------------------------------------------
-Declared under `libraries:` in xray-paper/src/main/resources/plugin.yml. The server
+Declared under `libraries:` in xray-spigot/src/main/resources/plugin.yml. The server
 downloads each from Maven Central into its own `libraries/` directory on first start.
 
   HikariCP                                        (com.zaxxer:HikariCP:7.1.0)
@@ -62,19 +62,20 @@ PROVIDED BY THE SERVER — NOT REDISTRIBUTED IN THE JAR
 -------------------------------------------------------------------------------------
 
   SLF4J API (org.slf4j)
-    Logging facade. Paper puts slf4j-api on the classpath itself — paper-api's POM
+    Logging facade. Paper puts slf4j-api on the classpath itself — spigot-api's POM
     declares org.slf4j:slf4j-api — so bundling a second copy was waste, and a needless
     version-mismatch risk. This plugin compiles against it and never ships it.
     License: MIT License
 
-  Paper API (`paper-api 26.2.build.129-stable`, io.papermc.paper)
-    Compile-time and runtime API for the xray-paper module.
+  Spigot API (org.spigotmc:spigot-api:26.2-R0.1-SNAPSHOT)
+    Compile-time and runtime API for the xray-spigot module.
     License: GPL-3.0
 
     NOTE: linking a proprietary plugin against a GPL-licensed API is a widely debated
     area in the Minecraft plugin ecosystem, and it is not settled here. If you intend to
     distribute this plugin, treat it as a question for a qualified lawyer rather than as
-    a formality.
+    a formality. This question is unchanged by compiling against the Spigot API rather
+    than the Paper one - both derive from Bukkit and carry the same licence.
 
 
 -------------------------------------------------------------------------------------

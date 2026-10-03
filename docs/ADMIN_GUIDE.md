@@ -20,18 +20,19 @@ Requirements:
 
 | Component | Version |
 | --- | --- |
-| Server | Paper, Minecraft 26.2 (`paper-api 26.2.build.129-stable`) |
+| Server | Spigot, Minecraft 26.2 (`spigot-api 26.2-R0.1-SNAPSHOT`) |
 | Java | Java 25 (class files `major 69`; compiled and tested with Temurin 27+35 via `--release 25`) |
 | Folia | Not supported |
 
 Steps:
 
 1. Build the plugin (`mvn clean package`) or obtain a release jar. The jar is
-   `xray-paper/target/xray-anticheat-1.0.0.jar` (about 330 KB; it contains only the plugin's own
+   `xray-spigot/target/xray-anticheat-1.0.0.jar` (about 330 KB; it contains only the plugin's own
    code and configuration).
 2. Copy it to `plugins/`.
 3. Start the server. **The first start needs network access to Maven Central** — see below.
 4. Confirm the plugin is healthy with `/xray status`.
+5. Optionally enable the administration web panel - see section 8.
 
 On first start the plugin creates `plugins/XRayAntiCheat/`, writes the four configuration files,
 creates and migrates its database (SQLite by default at `plugins/XRayAntiCheat/xray.db`), and logs a
@@ -49,7 +50,7 @@ once, and it is the trade that takes the plugin download from 14 MB to 330 KB.
 If your server cannot reach Maven Central, you have three options, in order of preference:
 
 1. **Point the server at an internal mirror.** Start the server with
-   `-DPAPER_DEFAULT_CENTRAL_REPOSITORY=https://your.maven.mirror/repository/maven-public/` and let it
+   `-D(no Spigot equivalent of a repository-override property)=https://your.maven.mirror/repository/maven-public/` and let it
    fetch from there. This is the cleanest option if you already run a repository manager.
 2. **Pre-seed the cache.** On a machine that does have access, start the server once with the plugin
    installed, then copy the server's `libraries/` directory to the offline server. The downloads are
@@ -373,7 +374,90 @@ there is one.
 
 ---
 
-## 8. The inspector GUI
+## 8. The administration web panel
+
+The plugin can serve its own moderator console, so evidence can be reviewed from a browser instead of
+in-game. It is embedded - there is nothing else to install, and it adds nothing to the plugin jar - and
+it is **disabled by default**.
+
+### Enabling it
+
+```yaml
+web:
+  enabled: true
+  bind-address: 127.0.0.1
+  port: 8099
+  username: admin
+  password-hash: ''      # leave empty; a password is generated and printed once
+```
+
+Reload with `/xray reload`, or restart. With an empty `password-hash`, the plugin generates a strong
+password, prints it to the console **once** and stores only its PBKDF2-SHA256 hash. Then sign in at
+`http://127.0.0.1:8099`.
+
+To set your own password, put the hash in the configuration, or use:
+
+```
+/xray webpassword <new-password>
+```
+
+which hashes it for you, writes only the hash, and restarts the panel so any existing session ends. Note
+that a password given as a command argument appears in the server's command log if it logs commands -
+where that matters, set it through the configuration file instead.
+
+### Reaching it from another machine
+
+Tunnel to it, and leave the panel bound to loopback:
+
+```bash
+ssh -L 8099:127.0.0.1:8099 you@yourserver
+```
+
+Then open `http://127.0.0.1:8099` locally.
+
+Binding it to a real interface is supported but must be explicit: set `bind-address` and
+`allow-non-loopback: true`. The panel refuses a non-loopback address until you do, on purpose. There is
+no TLS, because terminating it would need either a dependency or a certificate lifecycle this feature
+cannot own, and a password-protected moderation console in plain text on a public interface is a
+decision that should never happen by accident.
+
+### What it can and cannot do
+
+It reads assessments, discoveries, statistics, the candidate list and the audit trail, and it writes
+audit entries. The only changes it can make to the game are **kick, ban, unban and message** - and it
+reports what actually happened, so a kick for a player who has already logged out is reported as *not
+online* rather than as a success.
+
+It cannot edit evidence. It cannot change a verdict, delete a discovery or adjust a score. Setting
+`read-only: true` removes the moderation actions entirely, leaving inspection.
+
+### Security posture, and its limits
+
+| Control | Behaviour |
+| --- | --- |
+| Bind address | Loopback unless `allow-non-loopback` is set. |
+| Password | PBKDF2-HMAC-SHA256, 210,000 iterations, per-password salt, constant-time comparison. |
+| Sessions | Random opaque tokens in an `HttpOnly; SameSite=Strict` cookie; idle expiry plus a 12-hour cap. |
+| CSRF | A session-bound token on every state-changing request. |
+| Lockout | Per-address after `max-failed-logins`, for `lockout-minutes`. Keyed per address, so an attacker cannot lock out the real administrator. |
+| Headers | Strict CSP (`default-src 'none'`, no inline script, no external origin), `nosniff`, `DENY` framing, `no-store`. |
+| Escaping | Every interpolated value is escaped where it is rendered. |
+| Reads | Bounded by `page-size`; no unbounded queries. |
+
+Set `behind-proxy: true` **only** when a reverse proxy you control always sets `X-Forwarded-For`. If the
+panel is directly reachable, that header can be forged and the per-address lockout bypassed.
+
+Out of scope, stated plainly: anyone with local access to the machine, or who can read `config.yml`.
+Both defeat a console embedded in a plugin, and no amount of code here changes that.
+
+### If it does not start
+
+The panel logs why, in every case. Common causes: `web.enabled` is false (it is off by default); no
+`password-hash` was generated (reload rather than assuming it failed); the port is in use; storage is
+unavailable, which the panel needs; or a non-loopback `bind-address` without `allow-non-loopback: true`.
+
+The plugin itself is unaffected by any of these. The panel failing never stops detection.
+## 9. The inspector GUI
 
 `/xray gui` opens the interface; `/xray gui <player>` or `/xray inspect <player> gui` opens a
 specific player. It is defined entirely by `gui.yml`.
@@ -410,7 +494,8 @@ Four actions report honestly rather than pretending:
 
 ---
 
-## 9. Interpreting evidence: the four numbers
+
+## 10. Interpreting evidence: the four numbers
 
 Moderators must be able to tell these four apart; conflating any two is the classic anti-cheat
 mistake. They appear on every verdict line.
@@ -434,7 +519,7 @@ The full interpretation — assumptions, false-positive control and worked examp
 
 ---
 
-## 10. Tuning the ore priors
+## 11. Tuning the ore priors
 
 The shipped priors are defensible defaults, not measurements of *your* world. This is the thing most
 worth tuning, and it is a controlled procedure, not guesswork.
@@ -479,7 +564,7 @@ generation from diamond; do not copy one ore's numbers onto another.
 
 ---
 
-## 11. Backups
+## 12. Backups
 
 Everything the plugin knows lives in the database, so backing it up is the whole job.
 
@@ -497,7 +582,7 @@ control or a config backup, since they represent staff effort.
 
 ---
 
-## 12. Schema migrations
+## 13. Schema migrations
 
 Migrations are **forward-only and additive**: they add tables and columns and never drop or rewrite
 existing data. They live in `xray-persistence/src/main/resources/migrations/` (the initial schema is
@@ -516,7 +601,7 @@ in `/xray status`.
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 ### The database is unreachable
 
@@ -579,7 +664,7 @@ one where it cannot.
 
 ---
 
-## 14. Limitations
+## 15. Limitations
 
 Read these before trusting the system with enforcement.
 

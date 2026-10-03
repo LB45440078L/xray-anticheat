@@ -34,6 +34,10 @@ public final class JdbcModeratorActionRepository extends JdbcRepository
             SELECT id, player_id, moderator_id, action, note, performed_at
             FROM moderator_actions WHERE moderator_id = ? ORDER BY performed_at DESC LIMIT ?""";
 
+    private static final String SELECT_RECENT = """
+            SELECT id, player_id, moderator_id, action, note, performed_at
+            FROM moderator_actions ORDER BY performed_at DESC LIMIT ?""";
+
     public JdbcModeratorActionRepository(ConnectionProvider provider) {
         super(provider);
     }
@@ -66,6 +70,22 @@ public final class JdbcModeratorActionRepository extends JdbcRepository
     @Override
     public List<StoredAction> byModerator(UUID moderatorId, int limit) {
         return query(SELECT_BY_MODERATOR, moderatorId, limit);
+    }
+
+    @Override
+    public List<StoredAction> recent(int limit) {
+        return read(connection -> {
+            List<StoredAction> actions = new ArrayList<>();
+            try (PreparedStatement select = connection.prepareStatement(SELECT_RECENT)) {
+                select.setInt(1, limit);
+                try (ResultSet rows = select.executeQuery()) {
+                    while (rows.next()) {
+                        actions.add(map(rows));
+                    }
+                }
+            }
+            return actions;
+        });
     }
 
     private List<StoredAction> query(String sql, UUID id, int limit) {

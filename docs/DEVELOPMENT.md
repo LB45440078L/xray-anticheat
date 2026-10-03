@@ -10,7 +10,7 @@ migration, or Minecraft event), and the test strategy.
 
 The project targets **Java 25** and is built with **Maven**. The compiler release is set once in
 the parent `pom.xml` (`maven.compiler.release = 25`). The toolchain it is verified against is
-Temurin 27, Maven 3.9.16, and `paper-api 26.2.build.129-stable`.
+Temurin 27, Maven 3.9.16, and `spigot-api 26.2-R0.1-SNAPSHOT`.
 
 Targeting 25 while compiling on JDK 27 is deliberate: `javac --release 25` emits `major version 69`
 class files and restricts the API to Java 25's, so the build fails rather than silently requiring a
@@ -43,7 +43,7 @@ mvn -pl xray-core test -Dtest=EvidenceEngineTest#caveExplorerIsNotSuspicious
 mvn -pl xray-persistence test -Dtest=PersistenceIntegrationTest
 ```
 
-`mvn clean package` produces `xray-paper/target/xray-anticheat-1.0.0.jar`, about **330 KB**.
+`mvn clean package` produces `xray-spigot/target/xray-anticheat-1.0.0.jar`, about **330 KB**.
 
 That figure is the point of the packaging design, so it is worth being explicit about what is and is
 not in the jar:
@@ -52,7 +52,8 @@ not in the jar:
 | --- | --- |
 | `io.xrayac.core` | Our own module. Not on Maven Central, so `libraries:` cannot fetch it. |
 | `io.xrayac.persistence` | Our own module. Same reason. |
-| `io.xrayac.paper` | The plugin itself. |
+| `io.xrayac.web` | The administration panel: an HTTP server and its interface. JDK-only. |
+| `io.xrayac.spigot` | The plugin itself. |
 | `config.yml`, `database.yml`, `gui.yml`, `messages.yml`, `plugin.yml` | Needed to write defaults on first run. |
 
 | **Not** in the jar | Where it comes from |
@@ -61,7 +62,7 @@ not in the jar:
 | `sqlite-jdbc` | `libraries:`, as above (11.5 MB of native binaries for five platforms) |
 | MariaDB Connector/J | `libraries:`, as above |
 | PostgreSQL JDBC driver | `libraries:`, as above |
-| `slf4j-api` | Already on the server's classpath; `paper-api`'s own POM depends on it |
+| `slf4j-api` | Already on the server's classpath; `spigot-api`'s own POM depends on it |
 
 The external artifacts are declared `provided` in the root `pom.xml`, which keeps them on the compile
 and test classpaths while excluding them from the packaged jar, **and** listed under `libraries:` in
@@ -146,7 +147,7 @@ xray-anticheat/
 │       │   ├── migration/MigrationRunner
 │       │   └── jdbc/JdbcRepository + seven Jdbc*Repository
 │       └── resources/migrations/   V1__initial_schema.sql, index.txt
-└── xray-paper/                     Paper adapter
+└── xray-spigot/                     Paper adapter
     └── src/main/
         ├── java/io/xrayac/paper/
         │   ├── XRayAntiCheatPlugin   composition root: wiring, scheduling, shutdown
@@ -165,7 +166,7 @@ xray-anticheat/
 ```
 
 Dependency direction: `xray-core` depends only on `slf4j-api`; `xray-persistence` depends on
-`xray-core` plus HikariCP and the JDBC drivers; `xray-paper` depends on both plus `paper-api`.
+`xray-core` plus HikariCP and the JDBC drivers; `xray-spigot` depends on both plus `spigot-api`.
 Nothing in `xray-core` may import a Bukkit type — that is the constraint that keeps the
 mathematics testable without a server, and it is checked simply by not having the dependency
 available to compile against.
@@ -383,7 +384,7 @@ compiler-checked.
    ```
 
 2. **Translate the server event into the variant in the adapter**, in
-   `io.xrayac.paper.listener.ObservationListener`. Register a handler with
+   `io.xrayac.spigot.listener.ObservationListener`. Register a handler with
    `@EventHandler(priority = EventPriority.MONITOR)`, check `settings.get().analysisEnabled()`
    and `analysesWorld(...)` early, build the immutable observation on the server thread, and
    enqueue anything to persist (`PendingPersistence`). Never call a repository or the evidence
@@ -445,7 +446,7 @@ deployment. This is stated in the test's own Javadoc and in [`DATABASE.md`](DATA
 
 ### Not tested
 
-`xray-paper` has **no tests**: `ConfigLoader`, `PluginSettings`, `MessageService`, `GuiManager`,
+`xray-spigot` has **no tests**: `ConfigLoader`, `PluginSettings`, `MessageService`, `GuiManager`,
 `AnalysisService`, `ObservationListener`, `AlertService`, `EnforcementService`, the session and
 ledger classes and `XRayAntiCheatPlugin` are exercised only by running the plugin on a server.
 This is the clearest gap in the suite, and adding a `ConfigLoaderTest` (loading a

@@ -94,7 +94,45 @@ they had found buried ore.
   `CONTRIBUTING.md` document the process. CI's first real run — on the commit that published the
   repository — passed.
 
+- **An embedded administration panel.** The plugin can now serve its own moderator console from
+  `xray-web`, a new module that depends on nothing but the JDK and `xray-core`: evidence review,
+  player inspection, ban-wave candidates and the audit trail, in a browser, with no other plugin or
+  service to install. It is **off by default** and bound to loopback; a non-loopback address is
+  refused unless `allow-non-loopback` is explicitly set, because the transport is plain HTTP and there
+  is no TLS here. It authenticates with one password (PBKDF2-HMAC-SHA256, 210,000 iterations,
+  constant-time comparison, per-address lockout), uses `HttpOnly; SameSite=Strict` sessions with CSRF
+  tokens on every state-changing request, sends a strict CSP with no inline script, escapes every
+  interpolated value, and bounds every read. It cannot edit evidence - it reads through the repository
+  interfaces and its only write is an audit entry. `/xray webpassword` sets the password and restarts
+  the panel; `xray.web` gates it. Enabled with `web.enabled: true`. It adds no dependency, and the jar
+  grew from 403 KB to 412 KB.
+- **`ModeratorActionRepository.recent(int)`**, so the audit view can answer "what has been done lately"
+  - the per-player and per-moderator queries cannot.
+- **56 tests for the panel**, 23 of which drive a real HTTP server over a real socket against a real
+  SQLite database: unauthenticated access, wrong credentials, lockout, cookie attributes, CSRF
+  enforcement (including that a refused request writes nothing), read-only mode, asset serving, path
+  traversal and unsupported methods.
+- `tools/ci/verify_jar.sh` now also fails if the panel's assets are missing from the jar, if the source
+  references Paper or Adventure API, or if `plugin.yml` carries a Paper-only key.
+
+
 ### Changed
+
+- **The project now targets the Spigot API exclusively, and the `xray-paper` module is now
+  `xray-spigot`** (Java package `io.xrayac.spigot`). `paper-api` is no longer a dependency at all;
+  the build resolves `org.spigotmc:spigot-api:26.2-R0.1-SNAPSHOT` from the SpigotMC repository. The
+  refactor was small because the source was already written against `org.bukkit` throughout - the
+  entire Paper-specific surface was two calls to `Plugin#getPluginMeta()`, now a documented `version()`
+  accessor using `getDescription()`. `folia-supported` was removed from `plugin.yml` as a Paper-only
+  key, and the verifier now fails the build if any Paper or Adventure API reappears in the source.
+- **SLF4J is now declared in `plugin.yml`'s `libraries:` list, with the `slf4j-jdk14` binding.** This
+  inverts a decision from the Paper build and is not cosmetic: `paper-api` depends on `slf4j-api` so a
+  Paper server already has it, but `spigot-api` does not and Spigot logs through `java.util.logging`.
+  Assuming the server supplied it would have left the plugin with no SLF4J at all and silently
+  discarded every log line. The verifier now requires both entries.
+- `runtime-libraries` via `libraries:` was verified to be a Spigot feature, not a Paper one:
+  `PluginDescriptionFile#getLibraries()` exists in spigot-api and `org.bukkit.plugin.java.LibraryLoader`
+  resolves the coordinates with Maven Resolver. The small-jar design therefore survives the migration.
 
 - Menu clicks play a configurable sound (`settings.open-sound`, `settings.click-sound`), resolved per use
   so a corrected name takes effect on reload.
@@ -124,7 +162,7 @@ they had found buried ore.
   bundles HikariCP, sqlite-jdbc, the MariaDB or PostgreSQL drivers, or slf4j-api. The four libraries
   are declared under `libraries:` in `plugin.yml`, which makes Paper fetch them from Maven Central on
   first start and add them to the plugin's classpath; slf4j-api was already on the server's classpath,
-  since `paper-api`'s own POM depends on it. Two things made the old jar large: sqlite-jdbc's native
+  since `spigot-api`'s own POM depends on it. Two things made the old jar large: sqlite-jdbc's native
   binaries for five platforms (11.5 MB, 82% of the total, for a plugin that runs on one), and shade
   bundling the external drivers at all. Our own two sibling modules are still merged in, because they
   are not published to Maven Central and cannot be fetched at runtime — and because that is easy to get
@@ -153,77 +191,3 @@ observations, accumulates an explainable body of evidence, presents it to modera
 defer enforcement into ban waves. It is designed and documented to be run in `ALERT_ONLY` mode
 while a server builds confidence in it.
 
-### Added
-
-- **Analytical core (`xray-core`).** A pure-Java Bayesian evidence engine in log-odds space with no
-  Minecraft or database dependency, so it is tested in isolation. It combines five evidence
-  components — hidden-discovery rate, inter-discovery waiting times, exposure mix, ore targeting,
-  and tunnel geometry — with reliability weighting, sample-size shrinkage and exponential
-  time-decay, adds a configurable prior, and bands the posterior onto the conventional forensic
-  evidence scale (weak, moderate, strong, very strong). Contributions may be positive or negative;
-  evidence that argues in the player's favour is recorded and offsets evidence against them.
-- **Independent-signal gating.** Evidence combines across independent signal families rather than
-  raw counts, and a conclusion requires both a minimum number of observations and a minimum number
-  of distinct signal families. Below either minimum the verdict is *insufficient evidence*,
-  irrespective of how extreme the raw number is.
-- **Per-ore priors.** Diamond, emerald and ancient debris ship with their own rates, multipliers,
-  depth ranges, vein sizes and alignment probabilities, reflecting that their generation genuinely
-  differs. An example profile for nether gold is included, disabled by default, as a template for
-  adding further ores.
-- **Persistence (`xray-persistence`).** HikariCP connection pooling and JDBC repositories over a
-  dialect-neutral schema with forward-only, additive migrations. SQLite, MariaDB and PostgreSQL are
-  supported. Credentials may be supplied through an environment variable.
-- **Paper plugin (`xray-paper`).** Event collection and bounded per-player session tracking, a
-  worker pool (virtual threads by default) that keeps all statistics and I/O off the server thread,
-  scheduled flushing and retention pruning, explainable alerts, and enforcement.
-- **Commands.** `/xray help`, `status`, `inspect`, `stats`, `evidence`, `history`, `gui`, `banwave`,
-  `note`, `reload` and `debug`, with `/xrayac` and `/ac` aliases. Each subcommand checks its own
-  permission.
-- **Graded permission tree.** `xray.admin`, `xray.alerts`, `xray.inspect`, `xray.teleport`,
-  `xray.freeze`, `xray.kick`, `xray.ban`, `xray.banwave`, `xray.reload`, `xray.debug` and the
-  umbrella `xray.*`.
-- **Moderator interface.** A configuration-defined chest-menu GUI: a tracked-player list ordered by
-  suspicion, a detail page with the evidence report and moderation actions (teleport, vanish,
-  spectate, freeze, note, acknowledge, flag, kick, ban), confirmation menus before irreversible
-  actions, and a per-ore statistics view.
-- **Ban waves.** Deferred, batched enforcement with candidate tracking, a candidate TTL, and
-  strength/confidence/signal thresholds. Waves are proposed for moderator approval by default;
-  automatic execution is opt-in.
-- **Four configuration files.** `config.yml`, `database.yml`, `messages.yml` and `gui.yml`, each
-  commented in place, with a documented, validated, atomically-swapped settings model and
-  `/xray reload`.
-- **Three enforcement modes.** `ALERT_ONLY` (default; never acts on a player), `IMMEDIATE` and
-  `BAN_WAVE`.
-- **Fail-safe storage.** An unreachable database does not prevent the plugin from enabling; it logs
-  the failure and continues with reduced function (analysis in memory, alerts raised, nothing
-  persisted, ban-wave enforcement suspended) while it retries.
-- **Python visualiser (`tools/xray_visualizer.py`).** An optional 3D scene of trajectories, mined
-  blocks, ore discoveries and targeting vectors, with a synthetic `--demo` dataset, a headless PNG
-  mode, and SQLite/PostgreSQL/MariaDB support.
-- **Documentation.** `README.md`, `docs/ADMIN_GUIDE.md`, `docs/MODERATOR_GUIDE.md`,
-  `docs/ARCHITECTURE.md`, `docs/CONFIGURATION.md`, `docs/DATABASE.md`, `docs/DEVELOPMENT.md`,
-  `docs/PERFORMANCE.md`, `docs/PRIVACY.md`, `docs/MATHEMATICAL_MODEL.md` and
-  `docs/STATISTICAL_MODEL.md`.
-- **Test suite.** 84 tests pass: 77 unit tests plus 7 SQLite integration tests.
-
-### Known limitations
-
-- Only SQLite is covered by automated tests. MariaDB and PostgreSQL share the same code paths and
-  schema but are not runtime-tested; validate them on staging before production.
-- MariaDB and PostgreSQL require the server operator to create the database; the plugin only creates
-  its own tables inside an existing one.
-- The in-memory excavation ledger is bounded. When it prunes, old excavation provenance is
-  forgotten and the analyser reports natural terrain or `UNKNOWN` rather than guessing. This errs
-  toward leniency.
-- A long session can overflow the bounded discovery buffer, which gradually makes the assessment
-  more lenient (documented in `AnalysisService`).
-- There is no machine learning, no training phase and no calibration requirement: the system works
-  from install with the shipped priors, and those priors are the thing most worth tuning to a
-  specific world.
-- Statistical evidence is not proof. The system produces priors and likelihood ratios, not
-  certainties, and is intended to focus human attention rather than replace it.
-- The model is specific to ore-directed behaviour; it makes no judgement about other forms of
-  cheating.
-- Folia is not supported.
-
-[1.0.0]: https://github.com/LB45440078L/xray-anticheat/releases/tag/v1.0.0

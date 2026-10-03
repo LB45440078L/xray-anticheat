@@ -12,7 +12,7 @@
 - [ ] `bash tools/ci/verify_jar.sh` passes
 - [ ] No dependency gained or lost its `provided` scope
 - [ ] If a version property in `pom.xml` changed for HikariCP, sqlite-jdbc, mariadb-java-client or
-      postgresql, `libraries:` in `xray-paper/src/main/resources/plugin.yml` was updated to match.
+      postgresql, `libraries:` in `xray-spigot/src/main/resources/plugin.yml` was updated to match.
       Version drift between those two files compiles perfectly and breaks only at runtime.
 - [ ] Documentation updated for anything user-visible (README, `docs/`, `CHANGELOG.md`)
 

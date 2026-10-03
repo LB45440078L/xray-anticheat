@@ -71,7 +71,7 @@ differs — you are tuning a model you can read, not a black box.
 - **Data retention you control** — separate retention per data class, pruned on a schedule, plus a documented privacy posture.
 - **A jar that is actually small** — 340 KB, not the usual 14 MB. It no longer ships five platforms' worth of native SQLite binaries you will never run, and it gets its database drivers from Paper's own library loader on first start. No other plugin required, no bStats, no telemetry, and no outbound connections other than to the database you configure.
 - **Python 3D visualiser** — included. Load a player's history from SQLite, MariaDB or PostgreSQL and see the trajectory, tunnels, veins, exposed vs buried ores and the targeting geometry in an interactive 3D view.
-- **120 automated tests** — the analytical engine, the SQLite integration path and the shipped configuration are all covered by a test suite that runs in a plain JVM.
+- **176 automated tests** — the analytical engine, the SQLite integration path, the shipped configuration, and the admin panel's whole HTTP security model (sessions, CSRF, lockout, headers) are covered by a suite that runs in a plain JVM.
 
 ---
 
@@ -119,7 +119,7 @@ either over-restrict ordinary moderators or hand every inspector the power to re
 
 ## Requirements
 
-- **Server:** Paper (declared API version 26.2). Not Folia-compatible.
+- **Server:** Spigot (declared API version 26.2). Not Folia-compatible.
 - **Java:** 25 or newer.
 - **Database:** none required — SQLite needs no external database server. MariaDB or PostgreSQL for a network of servers sharing one record.
 - **Network on first start:** the plugin fetches its four database libraries from Maven Central the first time the server starts, then caches them. That is the trade that keeps the download at 340 KB instead of 14 MB. Offline servers can pre-seed the cache or point at an internal Maven mirror, and the setup guide covers both.

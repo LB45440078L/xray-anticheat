@@ -95,7 +95,7 @@ available after the fine-grained observations have been pruned by retention.
 
 **Status.** The table exists in the schema but **no repository writes or reads it**. Session
 tracking itself is implemented, but it lives entirely in memory (`PlayerSession`/`SessionRegistry`
-in `xray-paper`), so nothing currently persists per-session aggregates. The table is reserved for
+in `xray-spigot`), so nothing currently persists per-session aggregates. The table is reserved for
 a future session-persistence feature.
 
 **Indexes.**

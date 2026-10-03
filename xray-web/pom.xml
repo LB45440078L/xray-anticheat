@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.xrayac</groupId>
+    <artifactId>xray-anticheat-parent</artifactId>
+    <version>1.0.0</version>
+  </parent>
+
+  <artifactId>xray-web</artifactId>
+  <name>XRay AntiCheat :: Admin Web Panel</name>
+  <description>
+    Embedded administration web server: a small, dependency-free HTTP layer over the
+    repository interfaces, serving a moderator console for inspecting and moderating
+    stored evidence. Deliberately depends on nothing but the JDK and xray-core - it uses
+    com.sun.net.httpserver rather than a web framework, and writes its own JSON, so it
+    cannot grow the plugin jar.
+  </description>
+
+  <dependencies>
+    <!--
+      The ONLY dependency is our own analytical core, and it is there solely for the
+      repository interfaces and the domain records they exchange. That is what keeps this
+      module free of both Minecraft and third-party libraries: it must never need a web
+      framework, a JSON library or a template engine, because every one of those would end
+      up inside the plugin jar.
+    -->
+    <dependency>
+      <groupId>io.xrayac</groupId>
+      <artifactId>xray-core</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+
+    <!-- A binding for the test classpath only. Without one SLF4J discards every log line and
+         the test output is full of "No SLF4J providers were found", which hides real warnings. -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!--
+      The integration test drives the real SQLite repositories through the panel's data
+      facade, so it needs the same driver and pool the plugin uses at runtime. Both are
+      `provided`, so this does NOT put them in the jar - it only makes them available to the
+      test classpath, exactly as in xray-persistence.
+    -->
+    <dependency>
+      <groupId>com.zaxxer</groupId>
+      <artifactId>HikariCP</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!--
+      Test scope only, and deliberately the real JDBC repositories rather than hand-written
+      fakes: the panel's whole job is to read what is stored, so a test that reads from a
+      fake can pass while the panel is broken against the schema that actually ships. This
+      does not put anything in the jar - xray-persistence is already shaded in via
+      xray-spigot.
+    -->
+    <dependency>
+      <groupId>io.xrayac</groupId>
+      <artifactId>xray-persistence</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+</project>

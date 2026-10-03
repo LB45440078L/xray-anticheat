@@ -1,6 +1,6 @@
 # XRay AntiCheat
 
-A statistical X-ray / ore-vision anti-cheat for Paper Minecraft servers. It observes how players
+A statistical X-ray / ore-vision anti-cheat for Spigot Minecraft servers. It observes how players
 mine, accumulates a body of evidence for or against ore-informed behaviour, and explains its
 reasoning to moderators in plain language.
 
@@ -39,10 +39,10 @@ Two consequences of this design matter more than any other single thing in this 
 
 | Component | Version |
 | --- | --- |
-| Server | Paper, Minecraft 26.2 (`paper-api 26.2.build.129-stable`) |
+| Server | Spigot, Minecraft 26.2 (`spigot-api 26.2-R0.1-SNAPSHOT`) |
 | Java | Java 25 (class files `major 69`; compiled and tested with Temurin 27+35 via `--release 25`) |
 | Build | Maven 3.9.16 |
-| Folia | Not supported (`folia-supported: false`) |
+| Folia | Not supported (regionised threading; the plugin is main-thread based) |
 
 The plugin is built against Paper's API and is expected to run on any Paper-derived server for the
 same Minecraft version. It has not been tested on Folia or on forks with a different threading
@@ -52,35 +52,42 @@ model.
 
 ## Building
 
-The project is a Maven multi-module build with three modules:
+The project is a Maven multi-module build with four modules:
 
 - **`xray-core`** — the analytical engine. Pure Java, no Minecraft dependency, no database
   dependency. All of the statistics live here and are tested in isolation.
 - **`xray-persistence`** — storage: HikariCP connection pooling and JDBC repositories for SQLite,
   MariaDB and PostgreSQL.
-- **`xray-paper`** — the Paper plugin itself: event listeners, session tracking, commands, the
-  moderator interface and enforcement.
+- **`xray-web`** — the administration panel: an embedded HTTP server over the repository interfaces,
+  and its interface. Depends on nothing but the JDK and `xray-core`.
+- **`xray-spigot`** — the Spigot plugin itself: event listeners, session tracking, commands, the
+  moderator interface, the panel's lifecycle and enforcement. Uses no Paper-specific API.
 
 ```bash
 mvn clean package
 ```
 
-The build compiles the modules, runs the test suite (120 tests: 94 analytical core, 13 persistence
-including SQLite integration, 13 paper) and produces the plugin jar at:
+The build compiles the modules, runs the test suite (176 tests: 94 analytical core, 13 persistence
+including SQLite integration, 56 for the administration panel - including a suite that drives the
+real HTTP server against a real database - and 13 for the plugin) and produces the plugin jar at:
 
 ```
-xray-paper/target/xray-anticheat-1.0.0.jar
+xray-spigot/target/xray-anticheat-1.0.0.jar
 ```
 
 The jar is about **330 KB**. It contains only this project's own code and its configuration files:
-the two sibling modules it needs (`xray-core`, `xray-persistence`) are merged in, because they are
-not published to Maven Central and cannot be fetched at runtime.
+the three sibling modules it needs (`xray-core`, `xray-persistence`, `xray-web`) are merged in,
+because they are not published to Maven Central and cannot be fetched at runtime.
 
-Everything external — HikariCP, the SQLite JDBC driver, and the MariaDB and PostgreSQL drivers — is
-**downloaded by the server at runtime** and is deliberately not bundled. The server already supplies
-slf4j itself. Those four artifacts are declared under `libraries:` in `plugin.yml`, which is Paper's
-supported mechanism for exactly this: the server fetches them from Maven Central on first start, adds
-them to the plugin's classpath and caches them in its `libraries/` directory.
+Everything external — HikariCP, the SQLite JDBC driver, the MariaDB and PostgreSQL drivers, and SLF4J
+with its `java.util.logging` binding — is **downloaded by the server at runtime** and is deliberately not
+bundled. Those six artifacts are declared under `libraries:` in `plugin.yml`: the server fetches them
+from Maven Central on first start, adds them to the plugin's classpath and caches them in its
+`libraries/` directory.
+
+SLF4J is listed there explicitly, and that matters: `spigot-api` does not depend on it the way
+`paper-api` did, and Spigot logs through `java.util.logging`. Assuming the server supplied it would have
+left the plugin with no SLF4J at all and silently discarded every log line.
 
 This is not a cosmetic saving. Bundling sqlite-jdbc alone cost 11.5 MB, because that artifact ships
 native SQLite binaries for five platforms (Linux, Linux-Musl, Windows, Mac and FreeBSD) and the
@@ -237,6 +244,7 @@ All commands live under `/xray`. Aliases are `/xrayac` and `/ac`.
 | `/xray note <player> <text>` | `xray.inspect` | Attach a note to a player's record. |
 | `/xray reload` | `xray.reload` | Reload all four configuration files. |
 | `/xray debug` | `xray.debug` | Toggle debug logging at runtime. |
+| `/xray webpassword <new-password>` | `xray.web` | Set the administration panel password. It is hashed before storage and the panel restarts. |
 
 Notes:
 
@@ -265,6 +273,7 @@ ordinary moderators or hand every inspector the power to remove players.
 | `xray.kick` | Kick a player from the inspection interface. |
 | `xray.ban` | Ban a player from the inspection interface. |
 | `xray.banwave` | Review, plan and approve ban waves. |
+| `xray.web` | Set the administration panel password. |
 | `xray.reload` | Reload the plugin configuration. |
 | `xray.debug` | Toggle debug logging. |
 | `xray.*` | Umbrella node granting every permission above. |

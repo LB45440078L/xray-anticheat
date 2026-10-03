@@ -56,7 +56,7 @@ jobs:
 
           plugin_version=$(python3 -c "
           import re, pathlib
-          text = pathlib.Path('xray-paper/src/main/resources/plugin.yml').read_text()
+          text = pathlib.Path('xray-spigot/src/main/resources/plugin.yml').read_text()
           m = re.search(r'^version:\s*(\S+)', text, re.M)
           print(m.group(1).strip().strip(chr(39) + chr(34)) if m else '?')")
 
@@ -83,7 +83,7 @@ jobs:
       - name: Checksum the jar
         run: |
           set -euo pipefail
-          cd xray-paper/target
+          cd xray-spigot/target
           jar=$(ls xray-anticheat-*.jar | grep -v -- '-original' | head -1)
           sha256sum "$jar" > "$jar.sha256"
           echo "--- $jar"
@@ -96,7 +96,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          cd xray-paper/target
+          cd xray-spigot/target
           jar=$(ls xray-anticheat-*.jar | grep -v -- '-original' | head -1)
           gh release create "$GITHUB_REF_NAME" \
             --title "XRay AntiCheat $GITHUB_REF_NAME" \

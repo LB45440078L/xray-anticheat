@@ -8,7 +8,7 @@
 #
 #     HikariCP, sqlite-jdbc, mariadb-java-client and postgresql appear as <...version>
 #     properties in the root pom.xml AND as coordinates under `libraries:` in
-#     xray-paper/src/main/resources/plugin.yml.
+#     xray-spigot/src/main/resources/plugin.yml.
 #
 #  Dependabot can only update the first. A PR that bumps one of those four will therefore
 #  fail the build in tools/ci/verify_jar.sh with a version-drift error telling you to update
@@ -16,7 +16,7 @@
 #  taking the version change without the plugin.yml change would produce a plugin that
 #  compiles cleanly and dies at runtime. Edit plugin.yml in the same PR and it goes green.
 #
-#  paper-api is exempt from that rule — it is `provided` and never enters the jar.
+#  spigot-api is exempt from that rule — it is `provided` and never enters the jar.
 # =====================================================================================
 version: 2
 

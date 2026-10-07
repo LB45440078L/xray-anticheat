@@ -71,7 +71,7 @@ world differs — you are tuning a model you can read, not a black box.
 [*][B]Never blocks the server[/B] — collection is event-driven and lightweight on the main thread; all analysis and every database operation runs on worker threads by design.
 [*][B]Bounded memory[/B] — per-player buffers have configurable caps and are discarded oldest-first, so hundreds of players do not grow without limit.
 [*][B]Data retention you control[/B] — separate retention per data class, pruned on a schedule, plus a documented privacy posture.
-[*][B]A jar that is actually small[/B] — 340 KB, not the usual 14 MB. It no longer ships five platforms' worth of native SQLite binaries you will never run, and it gets its database drivers from Paper's own library loader on first start. No other plugin required, no bStats, no telemetry, and no outbound connections other than to the database you configure.
+[*][B]A jar that is actually small[/B] — 340 KB, not the usual 14 MB. It no longer ships five platforms' worth of native SQLite binaries you will never run, and it lets the server fetch its libraries from Maven Central on first start. No other plugin required. No bStats, no telemetry, no analytics, no update checker: the only outbound connections are that one-time library fetch and your own database.
 [*][B]Python 3D visualiser[/B] — included. Load a player's history from SQLite, MariaDB or PostgreSQL and see the trajectory, tunnels, veins, exposed vs buried ores and the targeting geometry in an interactive 3D view.
 [*][B]176 automated tests[/B] — the analytical engine, the SQLite integration path, the shipped configuration, and the admin panel's whole HTTP security model (sessions, CSRF, lockout, headers) are all covered by a suite that runs in a plain JVM.
 [/LIST]
@@ -126,7 +126,7 @@ either over-restrict ordinary moderators or hand every inspector the power to re
 [*][B]Server:[/B] Spigot (declared API version 26.2). Not Folia-compatible.
 [*][B]Java:[/B] 25 or newer.
 [*][B]Database:[/B] none required — SQLite needs no external database server. MariaDB or PostgreSQL for a network of servers sharing one record.
-[*][B]Network on first start:[/B] the plugin fetches its four database libraries from Maven Central the first time the server starts, then caches them. That is the trade that keeps the download at 340 KB instead of 14 MB. Offline servers can pre-seed the cache or point at an internal Maven mirror, and the setup guide covers both.
+[*][B]Network on first start:[/B] the server fetches six libraries from Maven Central the first time it starts, then caches them in its own libraries directory. That is the trade that keeps this download at 340 KB instead of 14 MB. On a server with no internet access, run one start on a connected machine and copy that directory across; the setup guide covers it. The full list is under Dependencies below.
 [/LIST]
 
 [HR]
@@ -176,13 +176,33 @@ anti-cheat.
 [*]First-run setup is one file drop plus a restart; the plugin writes its own defaults on first start
 [/LIST]
 
+[HR]
+
+[B][SIZE=5]Dependencies[/SIZE][/B]
+
+There is no required companion plugin — this works on its own. What it does need:
+
+[LIST]
+[*][B]Java 25 or newer.[/B] Compiled to Java 25 class files; it will not load on an older JVM.
+[*][B]Six libraries, fetched by the server from Maven Central on first start[/B] and cached in the server's own [FONT=monospace]libraries/[/FONT] directory. They are declared in [FONT=monospace]plugin.yml[/FONT] under [FONT=monospace]libraries:[/FONT], so the [B]server[/B] fetches them — the plugin downloads nothing itself.
+[/LIST]
+
+[LIST]
+[*][FONT=monospace]com.zaxxer:HikariCP:7.1.0[/FONT] — connection pool
+[*][FONT=monospace]org.xerial:sqlite-jdbc:3.53.4.0[/FONT] — SQLite driver, the default backend
+[*][FONT=monospace]org.mariadb.jdbc:mariadb-java-client:3.5.10[/FONT] — MariaDB driver
+[*][FONT=monospace]org.postgresql:postgresql:42.7.13[/FONT] — PostgreSQL driver
+[*][FONT=monospace]org.slf4j:slf4j-api:2.0.20[/FONT] — logging facade
+[*][FONT=monospace]org.slf4j:slf4j-jdk14:2.0.20[/FONT] — routes that logging into the server console
+[/LIST]
+
+All six are public artifacts on Maven Central: [URL]https://repo1.maven.org/maven2/[/URL]
+
 [CENTER][SIZE=5][B]Buying it[/B][/SIZE][/CENTER]
 
-[CENTER][SIZE=4][COLOR=#5B9BD5][B]{{PRICE}}[/B][/COLOR][/SIZE]
+[CENTER]One-time purchase. No subscriptions, no per-server fees, no telemetry, no call-home — the only time this plugin uses your network is the one-off library fetch described above.
 
-One-time purchase. No subscriptions, no per-server fees, no telemetry.[/CENTER]
-
-[CENTER][B]{{PURCHASE_LINK}}[/B]
+Purchase is handled by this resource page's own buy button.
 
 Questions before you buy? Ask below and I will answer them here.[/CENTER]
 

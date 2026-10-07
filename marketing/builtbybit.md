@@ -69,7 +69,7 @@ differs — you are tuning a model you can read, not a black box.
 - **Never blocks the server** — collection is event-driven and lightweight on the main thread; all analysis and every database operation runs on worker threads by design.
 - **Bounded memory** — per-player buffers have configurable caps and are discarded oldest-first, so hundreds of players do not grow without limit.
 - **Data retention you control** — separate retention per data class, pruned on a schedule, plus a documented privacy posture.
-- **A jar that is actually small** — 340 KB, not the usual 14 MB. It no longer ships five platforms' worth of native SQLite binaries you will never run, and it gets its database drivers from Paper's own library loader on first start. No other plugin required, no bStats, no telemetry, and no outbound connections other than to the database you configure.
+- **A jar that is actually small** — 340 KB, not the usual 14 MB. It no longer ships five platforms' worth of native SQLite binaries you will never run, and it lets the server fetch its libraries from Maven Central on first start. No other plugin required. No bStats, no telemetry, no analytics, no update checker: the only outbound connections are that one-time library fetch and your own database.
 - **Python 3D visualiser** — included. Load a player's history from SQLite, MariaDB or PostgreSQL and see the trajectory, tunnels, veins, exposed vs buried ores and the targeting geometry in an interactive 3D view.
 - **176 automated tests** — the analytical engine, the SQLite integration path, the shipped configuration, and the admin panel's whole HTTP security model (sessions, CSRF, lockout, headers) are covered by a suite that runs in a plain JVM.
 
@@ -122,7 +122,7 @@ either over-restrict ordinary moderators or hand every inspector the power to re
 - **Server:** Spigot (declared API version 26.2). Not Folia-compatible.
 - **Java:** 25 or newer.
 - **Database:** none required — SQLite needs no external database server. MariaDB or PostgreSQL for a network of servers sharing one record.
-- **Network on first start:** the plugin fetches its four database libraries from Maven Central the first time the server starts, then caches them. That is the trade that keeps the download at 340 KB instead of 14 MB. Offline servers can pre-seed the cache or point at an internal Maven mirror, and the setup guide covers both.
+- **Network on first start:** the server fetches six libraries from Maven Central the first time it starts, then caches them in its own `libraries/` directory. That is the trade that keeps this download at 340 KB instead of 14 MB. On a server with no internet access, run one start on a connected machine and copy that directory across. The full list is under Dependencies below.
 
 ---
 
@@ -171,13 +171,34 @@ anti-cheat.
 
 ---
 
+---
+
+## Dependencies
+
+There is no required companion plugin — this works on its own. What it does need:
+
+- **Java 25 or newer.** Compiled to Java 25 class files; it will not load on an older JVM.
+- **Six libraries, fetched by the server from Maven Central on first start**, cached in the server's own
+  `libraries/` directory. They are declared in `plugin.yml` under `libraries:`, so the **server** fetches
+  them — the plugin downloads nothing itself.
+
+| Artifact | Purpose |
+| --- | --- |
+| `com.zaxxer:HikariCP:7.1.0` | connection pool |
+| `org.xerial:sqlite-jdbc:3.53.4.0` | SQLite driver (default backend) |
+| `org.mariadb.jdbc:mariadb-java-client:3.5.10` | MariaDB driver |
+| `org.postgresql:postgresql:42.7.13` | PostgreSQL driver |
+| `org.slf4j:slf4j-api:2.0.20` | logging facade |
+| `org.slf4j:slf4j-jdk14:2.0.20` | routes that logging into the server console |
+
+All six are public artifacts on Maven Central: <https://repo1.maven.org/maven2/>
+
 ## Buy
 
-### {{PRICE}}
+One-time purchase. No subscriptions, no per-server fees, no telemetry, no call-home — the only time this
+plugin touches your network is the one-off library fetch described above.
 
-One-time purchase. No subscriptions, no per-server fees, no telemetry.
-
-**{{PURCHASE_LINK}}**
+Purchase is handled by this page's own buy button.
 
 Questions before you buy? Ask below and I will answer them here.
 

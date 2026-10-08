@@ -44,7 +44,7 @@ rapporto di verosimiglianza di $0{,}997$, contro un giocatore legittimo, e in cu
 della regola di aggregazione ridusse la stessa evidenza a $1{,}6\times10^{-11}$. Diciamo
 esplicitamente che non è stata condotta alcuna sperimentazione sul campo, che non esiste alcuna
 verità di riferimento etichettata e che il sistema non pubblica alcun tasso di falsi positivi,
-perché nessuno può essere stimato senza tali dati. Il contributo è una costruzione statistica
+perché nessuno può essere stimato senza tali dati. Il rapporto sviluppa inoltre la geometria della visibilità come modello fisico esplicito, in cui la soglia di riferimento per l'allineamento casuale è un fattore di vista esatto e l'occlusione è attenuazione di Beer-Lambert con un coefficiente di estinzione fissato dalla porosità della roccia, e presenta tredici figure che mostrano il comportamento del modello anziché nuove misure. Il contributo è una costruzione statistica
 difendibile e un resoconto onesto dei suoi limiti.
 
 **Parole chiave:** rapporto di verosimiglianza, log-odds, valutazione forense dell'evidenza,
@@ -462,6 +462,91 @@ fortemente negativo e cade nello stesso ramo dell'insufficienza, il che è volut
 un'evidenza discolpante come sospetto debole si leggerebbe come una lieve accusa in un rapporto di
 moderazione.
 
+### 4.10 Perché le componenti hanno questa forma
+
+Le espressioni delle Sezioni da 4.2 a 4.8 non sono scelte convenzionali. Ognuna risponde a una
+esigenza dichiarata, e questa sezione enuncia l'esigenza e svolge la derivazione, così che un
+lettore possa dissentire da una decisione di modellazione nel punto in cui è stata presa anziché
+doverla ricostruire a ritroso.
+
+**Neyman-Pearson come ragione dell'uso di un rapporto.** Fra tutte le prove di $H_0$ contro $H_1$
+la cui probabilità di rifiutare $H_0$ quando $H_0$ è vera non supera un livello fissato, la prova
+che rifiuta per valori grandi del rapporto di verosimiglianza è la più potente [1]. Scrivendo
+$\Lambda = p(\mathrm{dati}\mid H_1)/p(\mathrm{dati}\mid H_0)$ e passando ai logaritmi, che sono
+monotoni e conservano quindi l'ordinamento dell'evidenza, ogni soglia sulla forza dell'evidenza
+diventa una soglia su $\ln\Lambda$. Il logaritmo è anche l'unità in cui i contributi indipendenti
+si sommano, ed è ciò che permette di combinare cinque segnali per addizione. È questa la ragione
+per cui l'impianto accumula un log-rapporto di verosimiglianza e non, poniamo, una somma pesata di
+punteggi normalizzati: una somma pesata di punteggi non ha alcuna lettura come peso dell'evidenza e
+non può essere spiegata a un giocatore accusato.
+
+**Il rapporto poissoniano.** Sia il numero di ritrovamenti di minerale nascosto su un'esposizione
+$E$ distribuito secondo Poisson con media $\lambda E$ sotto ciascuna ipotesi. Il rapporto di
+verosimiglianza è allora
+
+$$ \frac{p(k\mid H_1)}{p(k\mid H_0)} = \frac{(\lambda_1 E)^k e^{-\lambda_1 E}/k!}{(\lambda_0 E)^k e^{-\lambda_0 E}/k!} $$
+
+e il fattore $k!$ compare al numeratore e al denominatore perché entrambe le ipotesi descrivono le
+stesse osservazioni sullo stesso spazio, sicché si elide. Passando ai logaritmi resta
+$k\ln(\lambda_1/\lambda_0) - (\lambda_1-\lambda_0)E$, che è la (4.2). L'elisione non è estetica: è
+la ragione per cui il modello di conteggio non necessita di costanti di normalizzazione, ed è la
+stessa elisione che rende il modello dei tempi di attesa della Sezione 4.4 algebricamente
+identico a esso.
+
+**Perché l'esposizione e non il tempo, in una riga.** Sotto $H_0$ il conteggio atteso è
+$\lambda_0 E$. Se $E$ fosse sostituito dal tempo trascorso $t$, il parametro sottoposto a prova
+diventerebbe la frequenza di ritrovamento per ora, che è funzione degli strumenti, degli effetti di
+rapidità e del ritardo del server non meno che della condotta. Il punto di incrocio
+$k^{\star} = E(\lambda_1-\lambda_0)/\ln(\lambda_1/\lambda_0)$ cresce allora con l'esposizione
+anziché essere fisso, ed è questa la formulazione formale dell'affermazione della Sezione 4.1
+secondo cui la mera produttività non è evidenza.
+
+**La contrazione come peso di una distribuzione a posteriori coniugata.** Il fattore
+$s(n) = n/(n+\kappa)$ viene di solito introdotto come euristica di livellamento. Esso ha una
+derivazione. Sia la frequenza incognita per blocco $\lambda$ dotata di un prior Gamma
+$\lambda \sim \mathrm{Gamma}(\alpha, \beta)$ di media $\alpha/\beta$. Dopo aver osservato $k$
+ritrovamenti su un'esposizione $E$ la distribuzione a posteriori è
+$\mathrm{Gamma}(\alpha + k, \beta + E)$ di media
+
+$$ \mathbb{E}[\lambda \mid k, E] = \frac{\alpha+k}{\beta+E} = \frac{\beta}{\beta+E}\cdot\frac{\alpha}{\beta} + \frac{E}{\beta+E}\cdot\frac{k}{E}, $$
+
+sicché la stima dai dati $k/E$ riceve peso $E/(\beta+E)$ e la media del prior riceve il resto. La
+forma fornita in dotazione è lo stesso oggetto scritto in dimensione campionaria anziché in
+esposizione, con $\kappa$ che rappresenta il numero di pseudo-osservazioni cui il prior equivale:
+con $n = 5$ osservazioni i dati ricevono metà del peso, e con $n = 50$ ne ricevono $0{,}909$. La
+scelta $\kappa = 5$ è quindi l'affermazione che il prior vale circa cinque osservazioni, non una
+costante arbitraria. Una precisazione onesta appartiene a questa sede: la derivazione giustifica la
+forma funzionale, e l'implementazione la applica poi moltiplicativamente a un log-rapporto anziché
+a una stima di frequenza, il che è una decisione di modellazione e non una conseguenza della
+derivazione.
+
+**Perché il decadimento deve essere esponenziale.** Si richieda a qualunque schema di oblio che il
+peso di un'osservazione si fattorizzi su intervalli di tempo disgiunti, $w(t+s) = w(t)w(s)$, che è
+l'enunciato secondo cui lo schema non conserva memoria di quanto vecchia sia già l'osservazione. Le
+soluzioni continue di questa equazione funzionale sono esattamente $w(t) = e^{-\lambda t}$.
+L'esponenziale non è quindi una fra più opzioni ma l'unico peso senza memoria, e l'emivita ne è una
+riparametrizzazione, $\lambda = \ln 2 / t_{1/2}$. Un taglio netto non soddisfa la richiesta, poiché
+introduce una discontinuità in cui il peso cade a zero, e nemmeno la soddisfa una legge di potenza,
+che è il contenuto formale dell'osservazione della Sezione 4.6.
+
+**La confidenza come probabilità di arrivo.** Si modelli l'arrivo di una quantità decisiva di
+evidenza come processo di Poisson di frequenza $1/n_0$. La probabilità che almeno un arrivo
+siffatto sia avvenuto entro il campione $n$ è $1 - e^{-n/n_0}$, che è anche la funzione di
+ripartizione di una variabile esponenziale di media $n_0$. Con $n_0 = 20$ l'indice raggiunge
+$0{,}632$ a venti osservazioni e $0{,}950$ a sessanta. Moltiplicare il fattore analogo nel numero
+di gruppi indipendenti tratta i due requisiti come condizioni necessarie indipendenti, entrambe da
+soddisfare. Il prodotto può essere invertito per la dimensione campionaria richiesta da una
+decisione: il più piccolo $n$ per cui $C(n, 4) \ge 0{,}75$ è $n = 41$, che è il valore citato
+nella Sezione 7.2 e si ottiene risolvendo $1 - e^{-n/20} = 0{,}75/(1-e^{-1}) = 0{,}86739$.
+
+**Le odds a posteriori.** Il teorema di Bayes dà odds a posteriori uguali alle odds a priori
+moltiplicate per il fattore di Bayes, sicché in logaritmi $P = \rho + \Delta$ con
+$\rho = \ln(0{,}02/0{,}98) = -3{,}8918$. Il prior codifica un tasso di base del due per cento,
+cioè la convinzione che un giocatore valutato qualsiasi stia barando prima che alcuno dei suoi
+comportamenti sia stato esaminato. È l'unico punto in cui la popolazione di un server entra nel
+calcolo, ed è la ragione per cui le fasce della Sezione 4.9 eccedono: sono soglie su $P$, che
+include $\rho$, anziché soglie su $\Delta$.
+
 ---
 
 ## 5. Geometria
@@ -473,7 +558,74 @@ a leggere i numeri. La sezione è collocata separatamente perché le due grandez
 entrano nel modello sono derivate anziché adattate, e la terza è limitata proprio perché è la
 fonte classica di falsi positivi.
 
-### 5.1 Una soglia di riferimento esatta per l'allineamento dello sguardo
+### 5.1 Il modello fisico della visibilità del minerale
+
+Il trattamento della visibilità in questo impianto è un modello dello stesso genere di quelli usati
+per il trasporto radiativo, ed esporlo come tale rende esplicite le sue assunzioni e mostra quali
+delle sue costanti sono derivate anziché scelte. Si consideri un osservatore in un punto
+$\mathbf{o}$ e un blocco di minerale trattato come bersaglio piano di raggio $a$ a distanza $r$, e
+si chieda la probabilità che una linea di sguardo diretta arbitrariamente dall'osservatore
+raggiunga il bersaglio.
+
+La parte puramente geometrica della risposta è il fattore di vista, la frazione delle direzioni
+dell'osservatore che cadono sul bersaglio. Per un bersaglio che sottende l'angolo solido $\Omega$,
+la frazione della sfera intera è $\Omega/4\pi$, e per un disco di raggio $a$ visto a distanza $r$
+la semiapertura soddisfa $\cos\theta = r/\sqrt{r^2+a^2}$, sicché
+
+$$ F_{\mathrm{geom}}(r, a) = \frac{1}{2}\left(1 - \frac{r}{\sqrt{r^2+a^2}}\right). $$
+
+Per un bersaglio abbastanza grande perché $\theta$ sia fissato da un angolo di accettazione
+prestabilito anziché dalla sua dimensione, questa si riduce all'espressione già derivata nella
+Sezione 5.2, $(1-\cos\theta)/2$, che a $\theta = 30^\circ$ vale $0{,}0669873$. Ne seguono subito due
+conseguenze. Il fattore geometrico decresce solo lentamente con la distanza, poiché per
+$r \gg a$ va come $a^2/4r^2$. Ed è una frazione della sfera anziché del semispazio perché la mira
+dell'osservatore è una direzione fra tutte le direzioni, ed è per questo che la costante è divisa
+per due.
+
+La seconda parte è l'attenuazione, ed è qui che il modello si allontana dall'ottica nel vuoto. La
+roccia è a questo fine un mezzo poroso: un raggio che la attraversa viene bloccato se incontra un
+voxel opaco. Se una frazione $p$ dei voxel è opaca, se il raggio attraversa $L$ voxel e se
+l'occlusione da parte di voxel successivi è trattata come indipendente, la probabilità di
+raggiungere il lato opposto è
+
+$$ P_{\mathrm{trasmissione}}(L) = (1-p)^{L} = e^{L \ln(1-p)} = e^{-\mu L}, \qquad \mu = -\ln(1-p), $$
+
+che è l'attenuazione di Beer-Lambert con un coefficiente di estinzione fissato dalla porosità del
+mezzo. Con voxel unitari $L = r$, sicché il coefficiente è per blocco. La corrispondenza non è
+un'analogia lasca: è l'algebra identica, ed è la ragione per cui l'impianto descrive l'occlusione
+con un solo numero. Per $p = 0{,}15$ il coefficiente è $\mu = 0{,}163$ per blocco e metà dei raggi
+si perde entro $4{,}27$ blocchi, che è il contenuto quantitativo dell'affermazione secondo cui un
+velo di roccia nasconde il minerale in modo estremamente efficace a corto raggio.
+
+Combinando i due fattori si ottiene la probabilità di rilevamento per un bersaglio a distanza $r$,
+
+$$ D(r) = \frac{1-\cos\theta}{2}\, e^{-\mu r}, $$
+
+il cui massimo è la frazione geometrica e che tende a zero man mano che il bersaglio si allontana.
+Il numero di blocchi di minerale che un giocatore può effettivamente vedere da un punto di vista è
+allora la somma di $D$ sui blocchi della vena, ciascuno con la propria distanza e il proprio
+percorso di occlusione,
+
+$$ N_{\mathrm{vis}}(\mathbf{o}) = \sum_{i} \frac{1-\cos\theta_i}{2}\, e^{-\mu r_i}, $$
+
+e la classificazione della Sezione 3.1 è la questione se esista una posizione candidata
+$\mathbf{o}$ per cui questa somma sia non nulla, con gli stati di esposizione corrispondenti a
+quanti blocchi della vena contribuiscano.
+
+Tre cose del modello vanno dichiarate apertamente anziché lasciate intendere. In primo luogo,
+l'indipendenza dell'occlusione per voxel usata nella derivazione è un'approssimazione: la roccia
+reale è correlata, una sola lastra di pietra può bloccare molti raggi in una volta, e il $\mu$
+efficace varia quindi con la struttura del terreno anziché essere una proprietà del mezzo soltanto.
+In secondo luogo, l'implementazione non valuta l'integrale né risolve rispetto a una posizione.
+Campiona posizioni candidate e lancia raggi, il che è abbastanza economico da girare sul thread di
+analisi e che, come osserva la Sezione 3.1, sbaglia soltanto nel senso di dichiarare visibile un
+blocco occluso, cioè a favore del giocatore. In terzo luogo, nulla a valle dipende da $\mu$: la
+fisica fissa la forma del modello e il valore esatto della soglia geometrica di riferimento, mentre
+le decisioni operative poggiano sulla statistica dei conteggi delle Sezioni da 4.2 a 4.7. Il modello
+fisico è quindi esplicativo, e l'unica costante che esso apporta a una decisione è il $0{,}0669873$
+con cui una linea di sguardo cade sul bersaglio per caso.
+
+### 5.2 Una soglia di riferimento esatta per l'allineamento dello sguardo
 
 La componente di puntamento chiede se la linea di sguardo del giocatore fosse già orientata verso
 un minerale prima che questo potesse essere visibile. Per pesare una risposta positiva occorre la
@@ -513,7 +665,7 @@ L'angolo stesso è calcolato come $\operatorname{atan2}(|\mathbf{u}\times\mathbf
 \mathbf{u}\cdot\mathbf{v})$ anziché con un arcocoseno, perché la forma con il prodotto vettoriale
 è ben condizionata per vettori quasi paralleli, dove $\arccos$ perde precisione.
 
-### 5.2 Assi principali di una nuvola di punti
+### 5.3 Assi principali di una nuvola di punti
 
 Una galleria scavata o una vena è rappresentata come nuvola di centri di blocco. Con media
 $\boldsymbol{\mu} = N^{-1}\sum_j \mathbf{p}_j$, la matrice di covarianza nella sua forma di
@@ -553,7 +705,7 @@ $10^{-12}$ o finché non ne sono state eseguite cinquanta. Gli autovettori sono 
 meno del segno, e i chiamanti che necessitano di una direzione orientata la ricavano per
 proiezione.
 
-### 5.3 Efficienza del percorso e contributo limitato
+### 5.4 Efficienza del percorso e contributo limitato
 
 Dal percorso si calcolano due misure di direzionalità. L'efficienza del percorso è lo spostamento
 netto diviso la lunghezza accumulata,
@@ -864,6 +1016,116 @@ modello, poiché ogni scenario della suite è stato scritto insieme al modello. 
 grave ed è la ragione principale per cui questo rapporto rivendica una costruzione e un programma
 di verifica anziché un rilevatore validato.
 
+### 7.8 Risultati grafici
+
+Le figure di questa sezione presentano il comportamento del modello anziché nuove misure, e
+ciascuna è generata dalle costanti fornite in dotazione dal codice che accompagna questo rapporto.
+
+La Figura 1 mostra le due distribuzioni di conteggio che la prova è chiamata a separare. Con
+un'esposizione di duemila blocchi l'ipotesi legittima prevede una media di tre ritrovamenti
+nascosti e l'ipotesi informata una media di diciotto, sicché le due distribuzioni sono quasi
+disgiunte e una sola finestra è già informativa su un giocatore estremo. È questa la ragione per
+cui il modello di conteggio porta l'affidabilità più alta delle cinque componenti.
+
+![Le distribuzioni di Poisson dei ritrovamenti di minerale nascosto sotto le due ipotesi, per un'esposizione di duemila blocchi. L'ipotesi legittima ha media tre e l'ipotesi informata media diciotto, sicché i due modi sono quasi disgiunti.](figures/fig01_poisson.png)
+
+La Figura 2 traccia il rapporto di verosimiglianza di conteggio in funzione del numero osservato di
+ritrovamenti per tre esposizioni, e segna il punto di incrocio in cui l'evidenza cambia segno. Le
+curve salgono con pendenza $\ln m$ e sono traslate dal termine di penalità
+$(\lambda_1-\lambda_0)E$, ed è per questo che un giocatore che scava il doppio della roccia deve
+anche trovare proporzionalmente più minerale prima che si accumuli un qualsiasi contributo
+positivo.
+
+![Il rapporto di verosimiglianza di conteggio in funzione del numero osservato di ritrovamenti nascosti, per esposizioni di 500, 2000 e 5000 blocchi. I cerchi segnano il punto di incrocio $k^{\star}$ in cui l'evidenza cambia segno; la linea punteggiata è la fascia forte.](figures/fig02_crossover.png)
+
+La Figura 3 mostra come il moltiplicatore della frequenza informata fissi la tolleranza verso uno
+scavo produttivo ma legittimo. Con il moltiplicatore di sei fornito in dotazione il punto di
+incrocio si colloca a 4,19 ritrovamenti ogni mille blocchi, ossia 2,79 volte la frequenza
+legittima. La figura rende esplicita la concessione: il modello è deliberatamente cieco verso un
+imbroglione che si limiti a una frequenza di ritrovamento inferiore a circa tre volte quella
+onesta.
+
+![La frequenza di incrocio in ritrovamenti ogni mille blocchi in funzione del moltiplicatore della frequenza informata. La linea tratteggiata segna il moltiplicatore di sei fornito in dotazione, a cui l'incrocio è 4,19 per mille, circa 2,79 volte la frequenza a priori legittima.](figures/fig03_tolerance.png)
+
+La Figura 4 segue i log-odds a posteriori delle due finestre svolte della Sezione 7.2 al crescere
+del numero di ritrovamenti nascosti, con le soglie delle fasce tracciate attraverso il grafico.
+Mostra le due proprietà su cui il progetto è costruito: le curve divergono di decine di nat, e la
+curva informata attraversa la soglia forte solo dopo una dozzina di ritrovamenti, che è il punto in
+cui la condizione sulla dimensione campionaria è soddisfatta.
+
+![Log-odds a posteriori in funzione del numero di ritrovamenti nascosti per la finestra onesta e per la finestra informata, con le quattro soglie delle fasce segnate. Le curve si separano di decine di nat mentre entrambe restano vincolate dalla dimensione campionaria per conteggi piccoli.](figures/fig04_bands.png)
+
+La Figura 5 è una superficie tridimensionale dell'indice di confidenza $C(n, G)$ sulla dimensione
+campionaria e sul numero di gruppi indipendenti. La superficie sale ripida in $n$ per campioni
+piccoli e poi si appiattisce, restando proporzionale al fattore di gruppo ovunque; il crinale a $n$
+basso e $G$ alto è la regione che occupa un rapporto sottile ma corroborato, e l'angolo lontano è
+dove un rapporto di una sola famiglia non può mai arrivare, per quanti dati accumuli.
+
+![L'indice di confidenza come superficie sulla dimensione campionaria $n$ e sul numero di gruppi indipendenti $G$. Le righe a $n$ basso restano basse qualunque sia $G$, e le colonne a $G=1$ saturano a 0,393 per quanto $n$ diventi grande.](figures/fig05_confidence3d.png)
+
+La Figura 6 traccia il peso di decadimento in funzione dell'età di un ritrovamento e segna le
+emivite successive. La curva è l'esponenziale richiesto dall'argomento di assenza di memoria della
+Sezione 4.10, e i marcatori mostrano che l'evidenza si dimezza in una settimana e si riduce a circa
+il sei per cento in un mese.
+
+![Peso di evidenza conservato in funzione dell'età di un ritrovamento, con marcatori alle emivite successive di 168 ore. La ponderazione è l'unica forma priva di memoria.](figures/fig06_decay.png)
+
+La Figura 7 mostra la soglia geometrica di riferimento della Sezione 5.2 sull'intero intervallo
+delle semiaperture del cono, e segna il valore fornito in dotazione. La curva è piatta per angoli
+piccoli, ed è ciò che rende la soglia di riferimento così piccola all'angolo di accettazione di
+trenta gradi e quindi ciò che dà potenza al segnale di allineamento, e sale ripida oltre i sessanta
+gradi, dove comincerebbe ad ammettere come evidenza il gioco ordinario.
+
+![La frazione esatta di angolo solido $(1-\cos\theta)/2$ in funzione della semiapertura del cono. Il punto segnato è l'angolo di accettazione di trenta gradi fornito in dotazione, dove la frazione vale 0,0669873.](figures/fig07_solidangle.png)
+
+La Figura 8 traccia il modello di attenuazione della Sezione 5.1 per tre valori della frazione
+opaca. Le curve mostrano perché una prova di visibilità basata sul lancio di raggi è decisiva a
+corto raggio e inaffidabile a lungo raggio, e perché l'implementazione campiona posizioni anziché
+risolvere l'integrale.
+
+![Probabilità di rilevamento in funzione della distanza della linea di sguardo sotto attenuazione di Beer-Lambert, per frazioni opache di 0,05, 0,15 e 0,30. Le verticali punteggiate segnano la distanza di semi-attenuazione per ciascuna.](figures/fig08_attenuation.png)
+
+La Figura 9 presenta il caso di studio sull'aggregazione per vena della Sezione 7.4 su asse
+logaritmico. La regola per blocco produce punteggi prossimi all'unità, e sale verso la certezza man
+mano che più vene vengono scavate accuratamente, mentre la regola corretta per vena produce
+punteggi inferiori di dieci o dodici ordini di grandezza. La figura è la più chiara affermazione
+singola di che cosa abbia fatto il difetto.
+
+![Punteggio di sospetto riportato sotto la regola di aggregazione per blocco e sotto la regola corretta per vena, per dieci, venti e trenta vene parzialmente visibili, su asse logaritmico. Il difetto generava evidenza forte contro un giocatore legittimo e peggiorava con lo scavo accurato.](figures/fig09_vein.png)
+
+La Figura 10 quantifica il problema della molteplicità della Sezione 8.3. Per una ipotetica
+probabilità di superamento per singola valutazione $q$, la probabilità per famiglia di almeno un
+superamento dopo $m$ valutazioni è $1-(1-q)^m$, e la linea segnata mostra le quattordici
+valutazioni che un candidato può accumulare entro la propria durata di vita. Con $q = 0{,}05$ la
+frequenza per famiglia sale a 0,51 su quel periodo. La probabilità per singola valutazione non è
+nota e non può essere stimata dai dati disponibili, sicché la figura è una visualizzazione di
+sensibilità e non una misura.
+
+![Probabilità di superamento per famiglia in funzione del numero di valutazioni dello stesso giocatore, per probabilità ipotetiche per singola valutazione di 0,01, 0,05 e 0,10. La linea tratteggiata segna quattordici valutazioni, il massimo che un candidato può accumulare entro la propria durata di vita.](figures/fig10_multiplicity.png)
+
+La Figura 11 mostra il contributo geometrico e il suo limite. La funzione è lineare nella linearità
+composita fra i due estremi, così che la forma modula l'evidenza, e satura a un rapporto di
+verosimiglianza di due in entrambe le direzioni, così che la forma non possa mai decidere un
+verdetto qualunque sia la geometria.
+
+![Il contributo geometrico limitato in funzione della linearità composita del percorso, che mostra la saturazione a più e meno $\ln 2$. Con un'affidabilità di 0,4 l'effetto massimo del segnale sulla somma accumulata è 0,277 nat.](figures/fig11_geometry.png)
+
+La Figura 12 è una sezione trasversale schematica del problema della visibilità, disegnata come
+griglia di voxel per chiarezza e generata per questo rapporto anziché acquisita da un gioco. Mostra
+una galleria preesistente, una vena parzialmente occlusa e il cono di accettazione dalla posizione
+del giocatore, che insieme sono la geometria descritta dalle Sezioni 3.1 e 5.1.
+
+![Sezione trasversale schematica del problema della visibilità, generata per questo rapporto e non schermata di gioco. Il giocatore si trova in una galleria preesistente con un cono di accettazione di trenta gradi; la vena oltre è in parte visibile dalla galleria e in parte occlusa dalla pietra.](figures/fig12_schematic.png)
+
+La Figura 13 mostra una vena come nuvola di punti con i tre assi principali ottenuti dalla matrice
+di covarianza, tracciati sugli assi del mondo. L'asse dominante segue la vena, il secondo ne
+descrive la sezione e il terzo lo spessore residuo, che è la decomposizione usata dalla Sezione 5.3
+per calcolare rettilineità, linearità e planarità. Gli assi sono ricavati dall'iterazione di Jacobi
+descritta in quella sede, e gli autovalori mostrati nella legenda sono le grandezze da cui i
+descrittori di forma sono costruiti.
+
+![Una vena scavata rappresentata come nuvola di centri di blocco con i tre assi principali della matrice di covarianza tracciati come frecce. L'ordinamento degli autovalori fornisce i descrittori di forma usati dalla componente geometrica.](figures/fig13_pca3d.png)
+
 ---
 
 ## 8. Discussione
@@ -912,7 +1174,7 @@ che almeno una finestra raggiunga una fascia alta, che è il problema del giardi
 si biforcano applicato nel tempo. La durata di quattordici giorni del candidato e l'intervallo di
 ventiquattro ore fra le ondate ne limitano l'effetto, e nessuna soglia di significatività viene
 trattata come una decisione, ma non esiste alcuna costruzione di ripartizione dell'alpha né alcun
-test sequenziale del rapporto di verosimiglianza. Consideriamo la cosa non mitigata e la
+test sequenziale del rapporto di verosimiglianza. Quantitativamente, se una singola valutazione portasse una probabilità $q$ di raggiungere una fascia per puro caso, allora dopo $m$ valutazioni indipendenti la probabilità di almeno un superamento siffatto è $1-(1-q)^m$. Con $q = 0{,}05$ e le quattordici valutazioni che un candidato può accumulare entro la propria durata di vita, essa vale 0,51, e la Figura 10 mostra l'inflazione su un intervallo di $q$. Due precisazioni impediscono di sovrastimare il problema: le valutazioni non sono indipendenti, poiché finestre successive condividono la storia archiviata, sicché l'inflazione reale è inferiore a quella che il prodotto suggerisce, e la grandezza $q$ è incognita, che è precisamente il motivo per cui nessuna soglia in questo impianto viene trattata come una decisione. Consideriamo la cosa non mitigata e la
 dichiariamo nei termini più forti disponibili: è la ragione per cui l'uscita di questo sistema è un
 segnale di priorità per la revisione umana e non un verdetto.
 

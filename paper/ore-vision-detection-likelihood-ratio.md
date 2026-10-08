@@ -38,7 +38,7 @@ strongly incriminating evidence, a likelihood ratio of $0.997$, against a legiti
 in which correcting the aggregation rule reduced the same evidence to $1.6\times10^{-11}$. We are
 explicit that no field trial has been conducted, that no labelled ground truth exists, and that
 the system publishes no false-positive rate, because none can be estimated without such data.
-The contribution is a defensible statistical construction and an honest account of its limits.
+The report also develops the visibility geometry as an explicit physical model, in which the chance alignment baseline is an exact view factor and occlusion is Beer-Lambert attenuation with an extinction coefficient fixed by the porosity of the rock, and it presents thirteen figures that display the model's behaviour rather than new measurements. The contribution is a defensible statistical construction and an honest account of its limits.
 
 **Keywords:** likelihood ratio, log-odds, forensic evidence evaluation, sequential detection,
 ore-vision cheating, exposure normalisation, epistemic restraint
@@ -419,6 +419,85 @@ construction does not specify. A player whose behaviour argues against $H_1$ pro
 negative $P$ and falls into the same insufficient branch, which is intended: labelling
 exculpatory evidence as weak suspicion would read as a mild accusation in a moderation report.
 
+### 4.10 Why the components take the forms they do
+
+The expressions of Sections 4.2 to 4.8 are not conventional choices. Each answers a stated
+requirement, and this section states the requirement and carries out the derivation, so that a
+reader can disagree with a modelling decision at the point where it was made rather than having
+to reverse-engineer it.
+
+**Neyman-Pearson as the reason for using a ratio at all.** Among all tests of $H_0$ against $H_1$
+whose probability of rejecting $H_0$ when $H_0$ is true does not exceed a fixed level, the test
+that rejects for large values of the likelihood ratio is the most powerful [1]. Writing $\Lambda =
+p(\mathrm{data}\mid H_1)/p(\mathrm{data}\mid H_0)$ and taking logarithms, which is monotone and
+therefore preserves the ordering of evidence, every threshold on the strength of evidence becomes
+a threshold on $\ln\Lambda$. The logarithm is also the unit in which independent contributions
+add, which is what allows five signals to be combined by summation. This is the reason the
+framework accumulates a log-likelihood ratio and not, say, a weighted sum of normalised scores: a
+weighted sum of scores has no reading as a weight of evidence, and cannot be interpreted to an
+accused player.
+
+**The Poisson ratio.** Let the number of hidden-ore discoveries over exposure $E$ be Poisson with
+mean $\lambda E$ under each hypothesis. Then the likelihood ratio is
+
+$$ \frac{p(k\mid H_1)}{p(k\mid H_0)} = \frac{(\lambda_1 E)^k e^{-\lambda_1 E}/k!}{(\lambda_0 E)^k e^{-\lambda_0 E}/k!} $$
+
+and the factor $k!$ appears in numerator and denominator because both hypotheses describe the same
+observations over the same space, so it cancels. Taking logarithms leaves
+$k\ln(\lambda_1/\lambda_0) - (\lambda_1-\lambda_0)E$, which is (4.2). The cancellation is not
+cosmetic: it is why the count model needs no normalising constant, and it is the same cancellation
+that makes the waiting-time model of Section 4.4 algebraically identical to it.
+
+**Why exposure and not time, in one line.** Under $H_0$ the expected count is $\lambda_0 E$. If
+$E$ were replaced by elapsed time $t$, the parameter being tested would become the discovery rate
+per hour, which is a function of tooling, haste effects and server lag as much as of conduct. The
+crossover $k^{\star} = E(\lambda_1-\lambda_0)/\ln(\lambda_1/\lambda_0)$ then grows with exposure
+rather than being fixed, which is the formal statement of the claim in Section 4.1 that sheer
+productivity is not evidence.
+
+**Contraction as a conjugate posterior weight.** The factor $s(n) = n/(n+\kappa)$ is usually
+introduced as a smoothing heuristic. It has a derivation. Let the unknown per-block rate be
+$\lambda$ with a Gamma prior $\lambda \sim \mathrm{Gamma}(\alpha, \beta)$ of mean $\alpha/\beta$.
+After observing $k$ discoveries over exposure $E$ the posterior is
+$\mathrm{Gamma}(\alpha + k, \beta + E)$ with mean
+
+$$ \mathbb{E}[\lambda \mid k, E] = \frac{\alpha+k}{\beta+E} = \frac{\beta}{\beta+E}\cdot\frac{\alpha}{\beta} + \frac{E}{\beta+E}\cdot\frac{k}{E}, $$
+
+so the data estimate $k/E$ receives weight $E/(\beta+E)$ and the prior mean receives the rest. The
+shipped form is the same object written in sample size rather than exposure, with $\kappa$ standing
+for the number of pseudo-observations that the prior is worth: at $n = 5$ observations the data
+receive half the weight, and at $n = 50$ they receive $0.909$. The choice $\kappa = 5$ is therefore
+a statement that the prior is worth about five observations, not an arbitrary constant. One honest
+qualification belongs here: the derivation justifies the functional form, and the implementation
+then applies it multiplicatively to a log-ratio rather than to a rate estimate, which is a
+modelling decision rather than a consequence of the derivation.
+
+**Why the decay must be exponential.** Require of any forgetting scheme that the weight of an
+observation factorise across disjoint time intervals, $w(t+s) = w(t)w(s)$, which is the statement
+that the scheme has no memory of how old an observation already is. The continuous solutions of
+this functional equation are exactly $w(t) = e^{-\lambda t}$. The exponential is therefore not one
+option among several but the only memoryless weighting, and the half-life is a reparametrisation
+of it, $\lambda = \ln 2 / t_{1/2}$. A hard cut-off fails the requirement, since it introduces a
+discontinuity at which the weight drops to zero, and a power law fails it too, which is the formal
+content of the remark in Section 4.6.
+
+**Confidence as an arrival probability.** Model the arrival of a decisive amount of evidence as a
+Poisson process of rate $1/n_0$. The probability that at least one such arrival has occurred by
+sample $n$ is $1 - e^{-n/n_0}$, which is also the cumulative distribution of an exponential
+variable of mean $n_0$. With $n_0 = 20$ the index reaches $0.632$ at twenty observations and
+$0.950$ at sixty. Multiplying the analogous factor in the number of independent groups treats the
+two requirements as independent necessary conditions, each of which must be met. The product can
+be inverted for the sample size a decision requires: the smallest $n$ for which $C(n, 4) \ge 0.75$
+is $n = 41$, which is the figure quoted in Section 7.2 and is obtained by solving
+$1 - e^{-n/20} = 0.75/(1-e^{-1}) = 0.86739$.
+
+**Posterior odds.** Bayes' theorem gives posterior odds equal to prior odds times the Bayes factor,
+so in logarithms $P = \rho + \Delta$ with $\rho = \ln(0.02/0.98) = -3.8918$. The prior encodes a
+base rate of two per cent, that is, the belief that any given evaluated player is cheating before
+any of their behaviour has been examined. It is the only place a server's own population enters
+the calculation, and it is why the bands of Section 4.9 overshoot: they are thresholds on $P$,
+which includes $\rho$, rather than thresholds on $\Delta$.
+
 ---
 
 ## 5. Geometry
@@ -429,7 +508,70 @@ the same rate achieved while wandering, and to help a moderator read the numbers
 placed separately because the two geometric quantities that enter the model are derived rather
 than fitted, and the third is capped precisely because it is the classic source of false positives.
 
-### 5.1 An exact baseline for look alignment
+### 5.1 The physical model of ore visibility
+
+The framework's treatment of visibility is a model of the same kind as those used for radiation
+transport, and setting it out as such makes its assumptions explicit and shows which of its
+constants are derived rather than chosen. We consider an observer at a point $\mathbf{o}$ and an
+ore block treated as a small planar target of radius $a$ at distance $r$, and ask for the
+probability that an arbitrarily directed line of sight from the observer reaches the target.
+
+The purely geometric part of the answer is the view factor, the fraction of the observer's
+directions that fall on the target. For a target subtending solid angle $\Omega$, the fraction of
+the full sphere is $\Omega/4\pi$, and for a disc of radius $a$ viewed from distance $r$ the
+half-angle satisfies $\cos\theta = r/\sqrt{r^2+a^2}$, so that
+
+$$ F_{\mathrm{geom}}(r, a) = \frac{1}{2}\left(1 - \frac{r}{\sqrt{r^2+a^2}}\right). $$
+
+For a target large enough that $\theta$ is set by a fixed acceptance angle rather than by its own
+size, this reduces to the expression already derived in Section 5.2, $(1-\cos\theta)/2$, which at
+$\theta = 30^\circ$ is $0.0669873$. Two consequences follow immediately. The geometric factor
+decays only slowly with distance, since for $r \gg a$ it goes as $a^2/4r^2$. And it is a fraction
+of the sphere rather than of the hemisphere because the observer's aim is one direction among all
+directions, which is why the constant is divided by two.
+
+The second part is attenuation, and this is where the model departs from vacuum optics. Rock is a
+porous medium for this purpose: a ray travelling through it is blocked if it meets an opaque voxel.
+If a fraction $p$ of the voxels are opaque and the ray traverses $L$ voxels, and if occlusion by
+successive voxels is treated as independent, the probability of reaching the far side is
+
+$$ P_{\mathrm{transmit}}(L) = (1-p)^{L} = e^{L \ln(1-p)} = e^{-\mu L}, \qquad \mu = -\ln(1-p), $$
+
+which is Beer-Lambert attenuation with an extinction coefficient fixed by the porosity of the
+medium. With unit voxels, $L = r$, so the coefficient is per block. The correspondence is not a
+loose analogy; it is the identical algebra, and it is the reason the framework describes occlusion
+by a single number. For $p = 0.15$ the coefficient is $\mu = 0.163$ per block and half the rays are
+lost within $4.27$ blocks, which is the quantitative content of the statement that a veil of rock
+hides ore extremely effectively at close range.
+
+Combining the two factors gives the detection probability for a target at distance $r$,
+
+$$ D(r) = \frac{1-\cos\theta}{2}\, e^{-\mu r}, $$
+
+whose maximum is the geometric fraction and which falls to zero as the target recedes. The number
+of ore blocks a player can actually see from a viewpoint is then the sum of $D$ over the vein's
+blocks, each with its own distance and its own occlusion path,
+
+$$ N_{\mathrm{vis}}(\mathbf{o}) = \sum_{i} \frac{1-\cos\theta_i}{2}\, e^{-\mu r_i}, $$
+
+and the classification of Section 3.1 is the question of whether a candidate position
+$\mathbf{o}$ exists for which this sum is non-zero, with the exposure states corresponding to how
+many of the vein's blocks contribute.
+
+Three things about the model should be stated plainly rather than left to be inferred. First, the
+independence of voxel occlusion used in the derivation is an approximation: real rock is
+correlated, a single stone slab can block many rays at once, and the effective $\mu$ therefore
+varies with the structure of the terrain rather than being a property of the medium alone. Second,
+the implementation does not evaluate the integral or solve for a position. It samples candidate
+positions and casts rays, which is cheap enough to run on the analysis thread and which, as
+Section 3.1 notes, errs only in the direction of calling an occluded block visible, that is, in the
+player's favour. Third, nothing downstream depends on $\mu$: the physics fixes the shape of the
+model and the exact value of the geometric baseline, while the operational decisions rest on the
+count statistics of Sections 4.2 to 4.7. The physical model is therefore explanatory, and the one
+constant it contributes to a decision is the $0.0669873$ that a line of sight lands on the target
+by chance.
+
+### 5.2 An exact baseline for look alignment
 
 The targeting component asks whether the player's line of sight already pointed at an ore before
 it could have been visible. To weigh a positive answer, one needs the probability that an aimless
@@ -466,7 +608,7 @@ $\operatorname{atan2}(|\mathbf{u}\times\mathbf{v}|, \mathbf{u}\cdot\mathbf{v})$ 
 inverse cosine, because the cross-product form is well-conditioned for nearly parallel vectors
 where $\arccos$ loses precision.
 
-### 5.2 Principal axes of a point cloud
+### 5.3 Principal axes of a point cloud
 
 A mined gallery or a vein is represented as a cloud of block centres. With mean
 $\boldsymbol{\mu} = N^{-1}\sum_j \mathbf{p}_j$, the covariance matrix in its maximum-likelihood
@@ -502,7 +644,7 @@ continue until the off-diagonal magnitude falls below $10^{-12}$ or fifty sweeps
 performed. Eigenvectors are determined only up to sign, and callers that need an oriented
 direction re-derive it by projection.
 
-### 5.3 Path efficiency and the capped contribution
+### 5.4 Path efficiency and the capped contribution
 
 Two directness measures are computed from the path. Path efficiency is net displacement divided
 by accumulated path length,
@@ -787,6 +929,110 @@ obtained, since every scenario in the suite was authored alongside the model. Th
 the most serious and is the principal reason this report claims a construction and a verification
 programme rather than a validated detector.
 
+### 7.8 Graphical results
+
+The figures in this section present the model's behaviour rather than new measurements, and each
+is generated from the shipped constants by the code that accompanies this report.
+
+Figure 1 shows the two count distributions that the test is asked to separate. With an exposure of
+two thousand blocks the legitimate hypothesis predicts a mean of three hidden discoveries and the
+informed hypothesis a mean of eighteen, so the two distributions are almost disjoint and a single
+window is already informative about an extreme player. This is the reason the count model carries
+the largest reliability of the five components.
+
+![The Poisson distributions of hidden-ore discoveries under the two hypotheses, for an exposure of two thousand blocks. The legitimate hypothesis has mean three and the informed hypothesis mean eighteen, so the two modes are almost disjoint.](figures/fig01_poisson.png)
+
+Figure 2 plots the count likelihood ratio against the observed number of discoveries for three
+exposures, and marks the crossover at which the evidence changes sign. The curves rise with slope
+$\ln m$ and are offset by the penalty term $(\lambda_1-\lambda_0)E$, which is why a player who
+mines twice as much rock must also find proportionately more ore before any positive evidence
+accrues.
+
+![The count likelihood ratio as a function of the observed number of hidden discoveries, for exposures of 500, 2000 and 5000 blocks. Circles mark the crossover $k^{\star}$ at which the evidence changes sign; the dotted line is the strong band.](figures/fig02_crossover.png)
+
+Figure 3 shows how the informed-rate multiplier sets the tolerance to productive but legitimate
+mining. With the shipped multiplier of six the crossover sits at 4.19 finds per thousand blocks,
+or 2.79 times the legitimate rate. The figure makes the concession explicit: the model is
+deliberately blind to a cheater who restrains their find rate to below roughly three times the
+honest rate.
+
+![The crossover rate in finds per thousand blocks as a function of the informed-rate multiplier. The dashed line marks the shipped multiplier of six, at which the crossover is 4.19 per thousand, some 2.79 times the legitimate prior rate.](figures/fig03_tolerance.png)
+
+Figure 4 traces the posterior log-odds of the two worked windows of Section 7.2 as the number of
+hidden discoveries increases, with the band thresholds drawn across. It shows the two properties
+the design is built around: the curves diverge by tens of nats, and the informed curve crosses the
+strong threshold only after about a dozen discoveries, which is the point at which the sample-size
+gate is satisfied.
+
+![Posterior log-odds against the number of hidden discoveries for the honest window and the informed window, with the four band thresholds marked. The curves separate by tens of nats while both remain gated by sample size at small counts.](figures/fig04_bands.png)
+
+Figure 5 is a three-dimensional surface of the confidence index $C(n, G)$ over sample size and the
+number of independent groups. The surface rises steeply in $n$ at small samples and then flattens,
+while remaining proportional to the group factor throughout; the ridge at low $n$ and high $G$ is
+the region a thin but corroborated report occupies, and the far corner is where a single-family
+report can never arrive however much data it accumulates.
+
+![The confidence index as a surface over sample size $n$ and number of independent groups $G$. Rows at low $n$ remain low whatever $G$ is, and columns at $G=1$ saturate at 0.393 however large $n$ becomes.](figures/fig05_confidence3d.png)
+
+Figure 6 plots the decay weight against the age of a discovery and marks successive half-lives. The
+curve is the exponential required by the memorylessness argument of Section 4.10, and the markers
+show that evidence is halved in a week and reduced to about six per cent in a month.
+
+![Retained evidence weight against the age of a discovery, with markers at successive half-lives of 168 hours. The weighting is the unique memoryless form.](figures/fig06_decay.png)
+
+Figure 7 shows the geometric baseline of Section 5.2 across the whole range of cone half-angles,
+and marks the shipped value. The curve is shallow at small angles, which is what makes the
+baseline so small at the thirty-degree acceptance angle and hence what gives the alignment signal
+its power, and it rises steeply beyond sixty degrees, where it would begin to admit ordinary play
+as evidence.
+
+![The exact solid-angle fraction $(1-\cos\theta)/2$ as a function of the cone half-angle. The marked point is the shipped thirty-degree acceptance angle, where the fraction is 0.0669873.](figures/fig07_solidangle.png)
+
+Figure 8 plots the attenuation model of Section 5.1 for three values of the opaque fraction. The
+curves show why a visibility test built on ray casting is decisive at short range and unreliable
+at long range, and why the implementation samples positions rather than solving the integral.
+
+![Detection probability as a function of line-of-sight distance under Beer-Lambert attenuation, for opaque fractions of 0.05, 0.15 and 0.30. Dotted verticals mark the half-attenuation distance for each.](figures/fig08_attenuation.png)
+
+Figure 9 presents the vein-aggregation case study of Section 7.4 on a logarithmic axis. The
+per-block rule produces scores near unity, and rises toward certainty as more veins are mined
+thoroughly, while the corrected per-vein rule produces scores some ten to twelve orders of
+magnitude smaller. The figure is the clearest single statement of what the defect did.
+
+![Reported suspicion score under the per-block aggregation rule and under the corrected per-vein rule, for ten, twenty and thirty partly visible veins, on a logarithmic axis. The defect generated strong evidence against a legitimate player and grew worse with thorough mining.](figures/fig09_vein.png)
+
+Figure 10 quantifies the multiplicity problem of Section 8.3. For a hypothetical per-evaluation
+exceedance probability $q$ the family-wise probability of at least one exceedance after $m$
+evaluations is $1-(1-q)^m$, and the marked line shows the fourteen evaluations a candidate can
+accumulate within its lifetime. At $q = 0.05$ the family-wise rate rises to 0.51 over that period.
+The per-evaluation probability is not known and cannot be estimated from available data, so the
+figure is a sensitivity display rather than a measurement.
+
+![Family-wise exceedance probability against the number of evaluations of the same player, for hypothetical per-evaluation probabilities of 0.01, 0.05 and 0.10. The dashed line marks fourteen evaluations, the most a candidate can accumulate within its lifetime.](figures/fig10_multiplicity.png)
+
+Figure 11 shows the geometry contribution and its cap. The function is linear in the composite
+linearity between the two limits, so that shape modulates the evidence, and it saturates at a
+likelihood ratio of two in either direction, so that shape can never decide a verdict whatever the
+geometry.
+
+![The capped geometry contribution against the composite path linearity, showing saturation at plus and minus $\ln 2$. With a reliability of 0.4 the signal's maximum effect on the accumulated sum is 0.277 nats.](figures/fig11_geometry.png)
+
+Figure 12 is a schematic cross-section of the visibility problem, drawn as a voxel grid for clarity
+and generated for this report rather than captured from a game. It shows a pre-existing tunnel, a
+partly occluded vein, and the acceptance cone from the player's position, which together are the
+geometry that Sections 3.1 and 5.1 describe.
+
+![Schematic cross-section of the visibility problem, generated for this report and not a game screenshot. The player stands in a pre-existing tunnel with an acceptance cone of thirty degrees; the vein beyond is partly visible from the tunnel and partly occluded by stone.](figures/fig12_schematic.png)
+
+Figure 13 shows a vein as a point cloud with the three principal axes obtained from the covariance
+matrix, plotted on the axes of the world. The dominant axis follows the vein, the second describes
+its cross-section and the third its residual thickness, which is the decomposition that
+Section 5.3 uses to compute straightness, linearity and planarity. The axes are recovered by the
+Jacobi iteration described there, and the eigenvalues shown in the legend are the quantities the
+shape descriptors are built from.
+
+![A mined vein shown as a cloud of block centres with the three principal axes of the covariance matrix drawn as arrows. The eigenvalue ordering gives the shape descriptors used by the geometry component.](figures/fig13_pca3d.png)
+
 ---
 
 ## 8. Discussion
@@ -831,7 +1077,7 @@ than the latest or an average. Evaluating the same player repeatedly therefore r
 that at least one window reaches a high band, which is the garden-of-forking-paths problem applied
 across time. The fourteen-day candidate lifetime and the twenty-four-hour interval between waves
 bound the effect, and no significance threshold is treated as a decision, but there is no
-alpha-spending construction and no sequential probability ratio test. We regard this as unmitigated
+alpha-spending construction and no sequential probability ratio test. Quantitatively, if a single evaluation carried a probability $q$ of reaching a band by chance alone, then after $m$ independent evaluations the probability of at least one such arrival is $1-(1-q)^m$. At $q = 0.05$ and the fourteen evaluations a candidate can accumulate within its lifetime, that is 0.51, and Figure 10 displays the inflation across a range of $q$. Two qualifications keep this from overstating the problem: the evaluations are not independent, since successive windows share stored history, so the true inflation is smaller than the product suggests, and the quantity $q$ is unknown, which is precisely why no threshold in this framework is treated as a decision. We regard this as unmitigated
 and state it in the strongest terms available: it is the reason the output of this system is a
 prioritisation signal for human review and not a verdict.
 

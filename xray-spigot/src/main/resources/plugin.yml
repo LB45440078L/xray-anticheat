@@ -1,7 +1,7 @@
 name: XRayAntiCheat
 version: 1.0.1
 main: io.xrayac.spigot.XRayAntiCheatPlugin
-api-version: '26.2'
+api-version: '26.1'
 authors: [XRayAC Contributors]
 description: Statistical X-Ray / ore-visibility anti-cheat with explainable evidence.
 website: https://github.com/LB45440078L/xray-anticheat

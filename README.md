@@ -187,7 +187,7 @@ key-by-key reference is in `docs/CONFIGURATION.md`.
 
 | File | Contents |
 | --- | --- |
-| `config.yml` | The analytical model, ore priors, evidence thresholds, enforcement policy, tracking limits, performance and retention. The heart of the configuration. |
+| `config.yml` | The analytical model, ore priors, evidence thresholds, enforcement policy, staff notifications, tracking limits, performance and retention. The heart of the configuration. |
 | `database.yml` | Storage engine selection and connection settings: SQLite path, or MariaDB/PostgreSQL host, port, credentials, pool and migration behaviour. |
 | `messages.yml` | Every user-facing string — alerts, command output, status pages, error text. Nothing user-facing is hard-coded in Java. |
 | `gui.yml` | The moderator interface: which menus exist, their items, lore, layout and the action each item performs. |
@@ -201,6 +201,20 @@ The single most consequential key in `config.yml` is
 states how many buried veins a legitimate miner finds per thousand blocks of rock moved. Getting its
 order of magnitude right matters; a factor-of-two error shifts the accumulated evidence slightly
 rather than flipping verdicts. See `docs/ADMIN_GUIDE.md` for a tuning procedure.
+
+Diamond, emerald, ancient debris and iron are modelled out of the box; iron is the one most often
+targeted on survival servers and ships enabled. `ores` is data-driven, so adding a material means
+adding a block with its own rate and multiplier, not writing code.
+
+Two sections are for reaching people and systems outside the game. `alerts.discord` forwards
+alerts, kicks, bans and ban waves to a channel webhook, which is how you hear about a player when
+nobody is online; setup is in `docs/DISCORD.md`. `enforcement.commands` runs your own kick and ban
+commands instead of the built-in ones, for networks that already run a punishment plugin. Both are
+off by default and neither changes what the plugin decides.
+
+`config-version` is `3`. A `config.yml` written for an earlier version still loads, but any section
+added since then is absent from the file and runs on its defaults; the plugin says so in the
+console at startup rather than leaving you to wonder why a new setting has no effect.
 
 ---
 

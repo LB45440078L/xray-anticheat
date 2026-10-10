@@ -77,6 +77,16 @@ alerts:
   footer: "§8§m-----------------------------------"
   hint: "§7Use §f/xray inspect %player%§7 to review the full evidence."
   suppressed: "§8(%count% further alerts for this player were suppressed in the last %time% to avoid flooding.)"
+  # Sent to Discord when alerts.discord.enabled is true. Discord uses **bold** and _italic_,
+  # not the section-sign colour codes the in-game messages use, so these are written plainly
+  # and any colour codes inherited from other placeholders are stripped before sending.
+  discord:
+    alert: "**%player%** — %strength% evidence (%confidence% confidence, %samples% observations, %signals% independent signals) in %world%. Score %score%, %decibans% dB. Evidence id %snapshot-id%."
+    kick: "**%player%** was disconnected, pending investigation — %strength% evidence (%confidence% confidence)."
+    ban: "**%player%** was banned — %strength% evidence (%confidence% confidence). Evidence id %snapshot-id%."
+    wave-entry: "**%player%** was removed by a ban wave — %strength% (%confidence% confidence)."
+    wave-summary: "Ban wave complete: %count% player(s) removed. Run by %moderator%."
+
 
 # -------------------------------------------------------------------------------------
 # Commands

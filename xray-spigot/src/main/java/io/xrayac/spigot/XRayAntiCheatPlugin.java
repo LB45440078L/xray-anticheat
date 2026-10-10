@@ -15,6 +15,7 @@ import io.xrayac.spigot.adapter.BukkitWorldView;
 import io.xrayac.spigot.adapter.ExcavationLedger;
 import io.xrayac.spigot.adapter.MaterialClassifier;
 import io.xrayac.spigot.alert.AlertService;
+import io.xrayac.spigot.alert.DiscordNotifier;
 import io.xrayac.spigot.analysis.AnalysisService;
 import io.xrayac.spigot.command.XRayCommand;
 import io.xrayac.spigot.config.ConfigLoader;
@@ -72,9 +73,6 @@ public final class XRayAntiCheatPlugin extends JavaPlugin {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(XRayAntiCheatPlugin.class);
 
-    /** Throttle applied to repeated alerts about the same player. */
-    private static final Duration ALERT_THROTTLE = Duration.ofMinutes(5);
-
     private volatile PluginSettings settings;
     private ExecutorService workers;
 
@@ -91,6 +89,7 @@ public final class XRayAntiCheatPlugin extends JavaPlugin {
     private EvidenceEngine engine;
     private AlertService alerts;
     private EnforcementService enforcement;
+    private DiscordNotifier discord;
     private AnalysisService analysis;
     private GuiManager gui;
 
@@ -163,8 +162,12 @@ public final class XRayAntiCheatPlugin extends JavaPlugin {
                 new ExposureMixComponent(),
                 new TunnelGeometryComponent()));
 
-        this.alerts = new AlertService(this, messages, ALERT_THROTTLE);
-        this.enforcement = new EnforcementService(this, messages, persistence, this::runAsync);
+        // Built before the services that use it: both the alert path and the enforcement path forward
+        // to the same notifier, so one webhook configuration governs everything that leaves the server.
+        this.discord = new DiscordNotifier(settings.alerts().discord(), this::runAsync);
+        this.alerts = new AlertService(this, messages, settings.alerts().throttle(), discord);
+        this.enforcement = new EnforcementService(this, messages, persistence, this::runAsync,
+                settings.enforcementCommands(), discord);
         this.analysis = new AnalysisService(this, workers, engine, this::settings, alerts, persistence,
                 enforcement, () -> debugEnabled);
 
@@ -465,7 +468,7 @@ public final class XRayAntiCheatPlugin extends JavaPlugin {
      *
      * <p>Declared in each shipped file as {@code config-version}.
      */
-    private static final int CONFIG_VERSION = 2;
+    private static final int CONFIG_VERSION = 3;
 
     /**
      * Warns when a configuration file was written by a newer release of the plugin.
@@ -486,6 +489,15 @@ public final class XRayAntiCheatPlugin extends JavaPlugin {
             LOGGER.warn("{} declares config-version {} but this build understands {}; settings added by "
                             + "the newer version will be ignored until the plugin is updated",
                     fileName, declared, CONFIG_VERSION);
+        } else if (declared < CONFIG_VERSION) {
+            // The mirror image, and the one that actually bites: an administrator who copies their old
+            // config.yml onto a new build gets no error, because every key they wrote still works. The
+            // sections they never wrote simply fall back to defaults, so a feature they expected to
+            // configure quietly does nothing. Saying so at startup is the only place it can be noticed.
+            LOGGER.warn("{} was written for config-version {}, but this build is {}: any section added "
+                            + "since then (for example 'alerts' or 'enforcement') is absent from your file "
+                            + "and is running on its defaults. Delete the file to regenerate it, or "
+                            + "compare it against the shipped default.", fileName, declared, CONFIG_VERSION);
         }
     }
 

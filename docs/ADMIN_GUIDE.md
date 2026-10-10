@@ -312,6 +312,48 @@ Alert frequency is a tuning signal, not a verdict on your players. If alerts are
 staff keep finding honest players behind them, your priors or your baselines are wrong for your
 world — go to §10, not to enforcement.
 
+### 6.1 Reaching moderators who are not online
+
+An in-game alert only reaches someone who is in the game. `alerts.discord` forwards the same
+events to a channel webhook, which is how you find out about a player at three in the morning.
+Full setup instructions, including creating the webhook and pinging a role, are in
+[`DISCORD.md`](DISCORD.md).
+
+```yaml
+alerts:
+  # Suppresses further alerts about the SAME player for this long. Repeats are counted and
+  # reported on the next alert rather than dropped. 0 disables throttling.
+  throttle-minutes: 5
+
+  discord:
+    enabled: false
+    webhook-url: ""          # must be https://
+    events: [ALERT, KICK, BAN, BAN_WAVE]
+    minimum-strength: MODERATE
+    minimum-confidence: 0.5
+```
+
+The Discord thresholds are the same two gates the in-game alerts use, applied independently, so the
+channel can be quieter than staff chat without changing what staff see. The webhook URL is a
+credential: anyone holding it can post to the channel, so keep it out of any file you commit.
+
+### 6.2 Using your own punishment commands
+
+If your network already runs a punishment plugin, `enforcement.commands` runs your command instead
+of this plugin's built-in kick and ban, so nothing writes to the vanilla ban list behind that
+system's back.
+
+```yaml
+enforcement:
+  commands:
+    ban: "networkban %player% 30d %reason%"
+  log-commands: false
+```
+
+Whatever you configure, the player is still disconnected and this plugin still writes its own audit
+row. Set `log-commands: true` while testing. The available placeholders and the full behaviour are
+documented in [`DISCORD.md`](DISCORD.md#related-replacing-the-kick-and-ban-commands).
+
 ---
 
 ## 7. Ban waves and enabling automatic enforcement

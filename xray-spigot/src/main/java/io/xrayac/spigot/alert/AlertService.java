@@ -1,5 +1,6 @@
 package io.xrayac.spigot.alert;
 
+import io.xrayac.core.alert.AlertEvent;
 import io.xrayac.core.decision.DecisionOutcome;
 import io.xrayac.core.evidence.EvidenceContribution;
 import io.xrayac.core.evidence.SuspicionSnapshot;
@@ -40,14 +41,16 @@ public final class AlertService {
     private final Plugin plugin;
     private final MessageService messages;
     private final Duration throttle;
+    private final DiscordNotifier discord;
 
     private final Map<UUID, Instant> lastAlertAt = new HashMap<>();
     private final Map<UUID, Integer> suppressedSinceLastAlert = new HashMap<>();
 
-    public AlertService(Plugin plugin, MessageService messages, Duration throttle) {
+    public AlertService(Plugin plugin, MessageService messages, Duration throttle, DiscordNotifier discord) {
         this.plugin = plugin;
         this.messages = messages;
         this.throttle = throttle;
+        this.discord = discord;
     }
 
     /**
@@ -86,6 +89,12 @@ public final class AlertService {
             messages.send(recipient, "alerts.hint", placeholders);
             messages.send(recipient, "alerts.footer", placeholders);
         }
+
+        // Forwarded once per alert rather than once per recipient: the channel is one destination, and
+        // an alert with five staff online is still one event. The notification is offered after the
+        // in-game delivery so that a slow or unreachable webhook cannot delay it.
+        discord.notify(AlertEvent.ALERT, snapshot.evidenceStrength(), snapshot.statisticalConfidence(),
+                messages.get("alerts.discord.alert", placeholders));
         return true;
     }
 

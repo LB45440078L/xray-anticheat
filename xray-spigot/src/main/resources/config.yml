@@ -23,7 +23,7 @@
 #      speed; lowering them buys detection speed at the cost of false positives.
 # =====================================================================================
 
-config-version: 2
+config-version: 3
 
 analysis:
   # Master switch for the analytical engine. When false the plugin still records data (so nothing is
@@ -118,9 +118,15 @@ analysis:
   history:
     enabled: true
 
-    # How far back an assessment reaches. This should not exceed retention.mining-events-days, or the
-    # trajectory history will be thinner than requested; the mismatch is reported at startup.
-    lookback-days: 90
+    # How far back an assessment reaches. It must not exceed retention.mining-events-days, because the
+    # trajectory is rebuilt from those stored block breaks and a longer lookback than the retention can
+    # only be honoured for discoveries, not for movement. The two are equal by default; the mismatch is
+    # reported at startup rather than left to show up as an unexplained cap on the geometry signal.
+    #
+    # Raise this and retention.mining-events-days together if you want evidence to span longer: raising
+    # only this one changes nothing for the trajectory, and raising only the retention changes nothing
+    # for the window.
+    lookback-days: 30
 
     # Per-player read limits. These bound the cost of a single assessment: without them one very active
     # player could turn every pass into an unbounded query and an enormous merged trajectory.
@@ -178,6 +184,94 @@ ban-wave:
   # false — the wave produces a list for a moderator to approve (`/xray banwave approve`).
   # true  — the wave bans automatically when it runs.
   automatic-ban: false
+
+
+# =====================================================================================
+#  ALERTS — how staff hear about what the plugin finds
+# =====================================================================================
+alerts:
+  # Minutes for which further alerts about the SAME player are suppressed once one has been
+  # delivered. Without this a persistently flagged player produces an alert on every analysis
+  # pass, which buries the staff channel within minutes. The suppressed alerts are counted
+  # and reported on the next one, so nothing is hidden, only deferred. Set to 0 to disable.
+  throttle-minutes: 5
+
+  # -----------------------------------------------------------------------------------
+  # Forwarding to a Discord channel
+  # -----------------------------------------------------------------------------------
+  # This is what tells you about a player while nobody is online to see the in-game alert.
+  # Step-by-step setup, including how to create the webhook, is in docs/DISCORD.md.
+  #
+  # A webhook URL is a credential: anyone holding it can post to your channel. Treat it like
+  # a password, and note that regenerating it in Discord invalidates the old one immediately.
+  discord:
+    enabled: false
+
+    # Paste the channel webhook here. It must start with https:// — the plugin refuses a
+    # plain HTTP address so the credential is never transmitted in clear text.
+    webhook-url: ""
+
+    # How the message is attributed in the channel.
+    username: "XRay AntiCheat"
+
+    # Optional. A role ID (not the role name) to ping alongside the message, so the
+    # notification reaches a phone even when the channel is muted. Get the ID by turning on
+    # Developer Mode in Discord, right-clicking the role, and choosing "Copy Role ID".
+    mention-role-id: ""
+
+    # Which events are forwarded. Valid values: ALERT, KICK, BAN, BAN_WAVE.
+    events:
+      - ALERT
+      - KICK
+      - BAN
+      - BAN_WAVE
+
+    # The same two gates the plugin uses in game: the evidence band, and how far the sample
+    # behind it can be trusted. Both must be met before a message is sent.
+    # Bands, weakest to strongest: INSUFFICIENT, WEAK, MODERATE, STRONG, VERY_STRONG.
+    minimum-strength: MODERATE
+    minimum-confidence: 0.5
+
+    # How long to wait for Discord before giving up, in seconds. Sends happen off the server
+    # thread, so a slow Discord cannot stall the game; this only bounds how long a worker
+    # spends on one message.
+    timeout-seconds: 5
+
+
+# =====================================================================================
+#  ENFORCEMENT
+# =====================================================================================
+enforcement:
+  # Run your own commands instead of the plugin's built-in kick and ban.
+  #
+  # This is for servers that already run a punishment system — a network-wide ban plugin, a
+  # temporary-ban manager, a Discord bridge — and do not want this plugin writing to the
+  # vanilla ban list behind that system's back.
+  #
+  # Leave a key empty ("") to keep the built-in behaviour for that action.
+  #
+  # Two things happen regardless of what is configured here:
+  #   * the player is disconnected, because that is what a kick or a ban means;
+  #   * the plugin still writes its own audit row, because the reason a player was removed
+  #     must remain answerable even when the punishment is recorded somewhere else.
+  #
+  # Commands are dispatched as the console, so do not prefix them with a slash. They may use
+  # these placeholders: %player%, %uuid%, %world%, %reason%, %strength%, %confidence%,
+  # %score%, %samples%, %signals%, %decibans%, %snapshot-id%, %moderator%.
+  #
+  # Example, for a server running a network ban plugin:
+  #   ban: "networkban %player% 30d %reason%"
+  commands:
+    kick: ""
+    ban: ""
+    # Falls back to `ban` when left empty.
+    ban-wave: ""
+    # Run on every alert, in addition to the in-game alert. Useful for a logging bridge.
+    alert: ""
+
+  # Log every command that is dispatched. Turn this on while trying a new template: it is the
+  # only way to see exactly what the plugin ran.
+  log-commands: false
 
 
 # =====================================================================================
@@ -268,6 +362,34 @@ ores:
     legitimate-look-alignment-probability: 0.067
     informed-look-alignment-probability: 0.5
     evidence-weight: 1.0
+
+  # Iron is the ore most often targeted on survival servers: it is the one every player needs
+  # and the one an ore-vision client profits from most in the early game. Its prior is far
+  # higher than diamond's, because iron is abundant and a legitimate miner finds buried iron
+  # often. A low prior here would treat ordinary mining as suspicious, which is the failure
+  # this whole model exists to avoid.
+  #
+  # The multiplier is lower than diamond's for the same reason. Iron is common enough that
+  # seeing it through rock is a smaller advantage than seeing diamond, and claiming otherwise
+  # would flag players who simply mine a great deal.
+  iron:
+    enabled: true
+    display-name: "Iron"
+    block-keys:
+      - "minecraft:iron_ore"
+      - "minecraft:deepslate_iron_ore"
+    hidden-discovery-rate-per-1000-blocks: 12.0
+    ore-informed-rate-multiplier: 5.0
+    min-y: -64
+    max-y: 320
+    typical-vein-size: 6
+    expected-distance-between-discoveries: 60.0
+    alignment-threshold-degrees: 30.0
+    legitimate-move-alignment-probability: 0.5
+    informed-move-alignment-probability: 0.8
+    legitimate-look-alignment-probability: 0.067
+    informed-look-alignment-probability: 0.5
+    evidence-weight: 0.9
 
   # Example of adding an ore the plugin does not model by default. Set `enabled: true` to use it.
   # Give it its own rate and multiplier rather than copying another ore's, or it will be measured
@@ -367,10 +489,11 @@ retention:
   # distinguishes "found a hidden ore" from "walked into somebody else's tunnel".
   world-modifications-days: 30
 
-  # Ban-wave records are deliberately NOT pruned. They are the enforcement audit trail — the answer
-  # to "when was this player removed, and on what evidence?" — and a wave happens at most daily, so
-  # the table holds a few hundred rows a year. Retention would cost more in lost accountability than
-  # it saves in space.
+  # Ban-wave records are deliberately NOT pruned, and there is no setting for it: they are the
+  # enforcement audit trail, the answer to "when was this player removed, and on what evidence?".
+  # A wave runs at most daily, so the table holds a few hundred rows a year, and pruning it would
+  # cost more in lost accountability than it could ever save in disk space. The only bound is
+  # ban-wave.candidate-ttl-hours, which expires candidates that were never acted on.
 
   # Whether a scheduled task prunes expired rows at all. Disable only if you manage retention
   # yourself with an external job.
@@ -380,9 +503,6 @@ retention:
   prune-hour: 4
 
 
-# =====================================================================================
-#  DEBUG
-# =====================================================================================
 # =====================================================================================
 #  Administration web panel
 # =====================================================================================

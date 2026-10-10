@@ -1,9 +1,11 @@
 package io.xrayac.spigot.config;
 
+import io.xrayac.core.alert.DiscordConfig;
 import io.xrayac.core.analysis.HistoryParameters;
 import io.xrayac.core.config.MapOreProfileRegistry;
 import io.xrayac.core.config.OreProfile;
 import io.xrayac.core.config.OreProfileRegistry;
+import io.xrayac.core.enforcement.EnforcementCommands;
 import io.xrayac.core.evidence.EvidenceParameters;
 import io.xrayac.core.decision.DecisionPolicy;
 import io.xrayac.core.port.OreCatalog;
@@ -49,6 +51,8 @@ public record PluginSettings(
         Performance performance,
         Retention retention,
         History history,
+        Alerts alerts,
+        EnforcementCommands enforcementCommands,
         Debug debug) {
 
     public PluginSettings {
@@ -146,8 +150,7 @@ public record PluginSettings(
             int miningBufferSize,
             int discoveryHistorySize,
             int analysisIntervalMinutes,
-            int sessionIdleTimeoutMinutes,
-            boolean retainDisconnectedPlayers) {
+            int sessionIdleTimeoutMinutes) {
 
         public Tracking {
             if (movementSampleDistance <= 0) {
@@ -209,7 +212,6 @@ public record PluginSettings(
             int oreDiscoveriesDays,
             int suspicionSnapshotsDays,
             int worldModificationsDays,
-            int banWavesDays,
             int pruneHour) {
 
         public Retention {
@@ -217,7 +219,7 @@ public record PluginSettings(
                 throw new IllegalArgumentException("pruneHour must lie in [0, 23]");
             }
             if (miningEventsDays < 1 || oreDiscoveriesDays < 1 || suspicionSnapshotsDays < 1
-                    || worldModificationsDays < 1 || banWavesDays < 1) {
+                    || worldModificationsDays < 1) {
                 throw new IllegalArgumentException("retention periods must be at least one day");
             }
         }
@@ -225,6 +227,34 @@ public record PluginSettings(
 
     /** Diagnostics. Only keys that actually affect behaviour are present. */
     public record Debug(boolean enabled, boolean logAnalysis) {
+    }
+
+    /**
+     * How staff are told about what the plugin finds.
+     *
+     * @param throttleMinutes how long one player's alerts are suppressed for after one is delivered,
+     *                        so that a persistently flagged player does not flood the staff channel;
+     *                        zero disables throttling and sends every alert
+     * @param discord         forwarding to a Discord channel webhook
+     */
+    public record Alerts(int throttleMinutes, DiscordConfig discord) {
+
+        public Alerts {
+            if (throttleMinutes < 0) {
+                throw new IllegalArgumentException("alerts.throttle-minutes must not be negative");
+            }
+            discord = discord == null ? DiscordConfig.disabled() : discord;
+        }
+
+        /** The suppression window as a duration. */
+        public Duration throttle() {
+            return Duration.ofMinutes(throttleMinutes);
+        }
+
+        /** The shipped defaults, used when the section is absent. */
+        public static Alerts defaults() {
+            return new Alerts(5, DiscordConfig.disabled());
+        }
     }
 
     /** A builder used by the loader, so that a partially-invalid file can fall back per-key. */

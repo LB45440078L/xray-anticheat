@@ -1,10 +1,14 @@
 package io.xrayac.spigot.config;
 
 import io.xrayac.web.WebConfig;
+import io.xrayac.core.alert.AlertEvent;
+import io.xrayac.core.alert.DiscordConfig;
 import io.xrayac.core.config.MapOreProfileRegistry;
 import io.xrayac.core.config.OreProfile;
 import io.xrayac.core.decision.DecisionPolicy;
 import io.xrayac.core.decision.EnforcementMode;
+import io.xrayac.core.enforcement.CommandTemplate;
+import io.xrayac.core.enforcement.EnforcementCommands;
 import io.xrayac.core.evidence.EvidenceParameters;
 import io.xrayac.core.evidence.EvidenceStrength;
 import io.xrayac.core.world.ExposurePolicy;
@@ -102,6 +106,8 @@ public final class ConfigLoader {
         PluginSettings.Performance performance = loadPerformance(config);
         PluginSettings.Retention retention = loadRetention(config);
         PluginSettings.History history = loadHistory(config);
+        PluginSettings.Alerts alerts = loadAlerts(config);
+        EnforcementCommands enforcementCommands = loadEnforcementCommands(config);
         PluginSettings.Debug debug = loadDebug(config);
 
         // Reading back further than the retention keeps would silently analyse a shorter past than the
@@ -117,7 +123,8 @@ public final class ConfigLoader {
         }
 
         PluginSettings settings = new PluginSettings(analysisEnabled, suspicionEnabled, worlds,
-                exposure, evidence, decision, ores, tracking, performance, retention, history, debug);
+                exposure, evidence, decision, ores, tracking, performance, retention, history,
+                alerts, enforcementCommands, debug);
         return new LoadResult(settings, warnings);
     }
 
@@ -324,7 +331,7 @@ public final class ConfigLoader {
 
     private PluginSettings.Tracking loadTracking(FileConfiguration config) {
         PluginSettings.Tracking fallback = new PluginSettings.Tracking(
-                0.5, 512, 2048, 200, 5, 30, false);
+                0.5, 512, 2048, 200, 5, 30);
         try {
             return new PluginSettings.Tracking(
                     config.getDouble("tracking.movement-sample-distance",
@@ -335,9 +342,7 @@ public final class ConfigLoader {
                     config.getInt("tracking.analysis-interval-minutes",
                             fallback.analysisIntervalMinutes()),
                     config.getInt("tracking.session-idle-timeout-minutes",
-                            fallback.sessionIdleTimeoutMinutes()),
-                    config.getBoolean("tracking.retain-disconnected-players",
-                            fallback.retainDisconnectedPlayers()));
+                            fallback.sessionIdleTimeoutMinutes()));
         } catch (IllegalArgumentException e) {
             warnings.add("tracking: " + e.getMessage() + " — using defaults");
             return fallback;
@@ -367,7 +372,7 @@ public final class ConfigLoader {
 
     private PluginSettings.Retention loadRetention(FileConfiguration config) {
         PluginSettings.Retention fallback = new PluginSettings.Retention(
-                true, 7, 90, 180, 30, 365, 4);
+                true, 30, 90, 180, 30, 4);
         try {
             return new PluginSettings.Retention(
                     config.getBoolean("retention.enabled", fallback.enabled()),
@@ -377,7 +382,6 @@ public final class ConfigLoader {
                             fallback.suspicionSnapshotsDays()),
                     config.getInt("retention.world-modifications-days",
                             fallback.worldModificationsDays()),
-                    config.getInt("retention.ban-waves-days", fallback.banWavesDays()),
                     config.getInt("retention.prune-hour", fallback.pruneHour()));
         } catch (IllegalArgumentException e) {
             warnings.add("retention: " + e.getMessage() + " — using defaults");
@@ -398,6 +402,98 @@ public final class ConfigLoader {
             warnings.add("analysis.history: " + e.getMessage() + " — using defaults");
             return fallback;
         }
+    }
+
+    /**
+     * Loads the staff-notification settings.
+     *
+     * <p>The throttle used to be a constant in the plugin, which meant an administrator whose staff
+     * channel was being flooded had no recourse but to turn alerts off entirely. It is a setting now.
+     */
+    private PluginSettings.Alerts loadAlerts(FileConfiguration config) {
+        PluginSettings.Alerts fallback = PluginSettings.Alerts.defaults();
+        DiscordConfig discord = loadDiscord(config);
+        try {
+            return new PluginSettings.Alerts(
+                    config.getInt("alerts.throttle-minutes", fallback.throttleMinutes()), discord);
+        } catch (IllegalArgumentException e) {
+            warnings.add("alerts: " + e.getMessage() + " — using defaults");
+            return fallback;
+        }
+    }
+
+    /**
+     * Loads the Discord webhook settings.
+     *
+     * <p>A misconfigured webhook disables the feature and warns, rather than failing the load: the
+     * plugin's own work must not be held hostage by a notification channel that cannot be reached. The
+     * one case worth warning about beyond that is a URL that is not a Discord webhook at all, because
+     * the post would succeed against some other service and the administrator would be left wondering
+     * why no messages appeared in their channel.
+     */
+    private DiscordConfig loadDiscord(FileConfiguration config) {
+        DiscordConfig fallback = DiscordConfig.disabled();
+        String path = "alerts.discord.";
+
+        Set<AlertEvent> events = new LinkedHashSet<>();
+        for (String raw : config.getStringList(path + "events")) {
+            AlertEvent event = AlertEvent.fromKey(raw);
+            if (event == null) {
+                warnings.add("alerts.discord.events contains '" + raw + "', which is not an event name; "
+                        + "valid values are ALERT, KICK, BAN and BAN_WAVE. It was ignored.");
+            } else {
+                events.add(event);
+            }
+        }
+
+        try {
+            DiscordConfig discord = new DiscordConfig(
+                    config.getBoolean(path + "enabled", fallback.enabled()),
+                    config.getString(path + "webhook-url", ""),
+                    config.getString(path + "username", fallback.username()),
+                    config.getString(path + "mention-role-id", ""),
+                    events,
+                    strength(config, path + "minimum-strength", fallback.minimumStrength()),
+                    config.getDouble(path + "minimum-confidence", fallback.minimumConfidence()),
+                    config.getInt(path + "timeout-seconds", fallback.timeoutSeconds()));
+            if (discord.isUsable() && !discord.looksLikeDiscordWebhook()) {
+                warnings.add("alerts.discord.webhook-url does not look like a Discord webhook"
+                        + " (expected a https://discord.com/api/webhooks/... address). Messages will be"
+                        + " posted to whatever the URL points at.");
+            }
+            return discord;
+        } catch (IllegalArgumentException e) {
+            warnings.add("alerts.discord: " + e.getMessage()
+                    + " — Discord notifications are disabled until this is corrected");
+            return fallback;
+        }
+    }
+
+    /**
+     * Loads the custom enforcement commands.
+     *
+     * <p>Every template is checked for placeholders the plugin cannot fill. The check earns its place
+     * because the failure mode is silent: a misspelled placeholder is dispatched to the server verbatim,
+     * so the administrator sees a command run and a punishment applied, and only later notices that the
+     * reason text or the player name came out wrong.
+     */
+    private EnforcementCommands loadEnforcementCommands(FileConfiguration config) {
+        String base = "enforcement.commands.";
+        EnforcementCommands commands = new EnforcementCommands(
+                new CommandTemplate(config.getString(base + "kick", "")),
+                new CommandTemplate(config.getString(base + "ban", "")),
+                new CommandTemplate(config.getString(base + "ban-wave", "")),
+                new CommandTemplate(config.getString(base + "alert", "")),
+                config.getBoolean("enforcement.log-commands", false));
+
+        Set<String> unknown = commands.unknownPlaceholders();
+        if (!unknown.isEmpty()) {
+            warnings.add("enforcement.commands uses placeholder(s) the plugin cannot fill: "
+                    + String.join(", ", unknown) + ". They are passed through unchanged. The known"
+                    + " placeholders are: "
+                    + String.join(", ", CommandTemplate.KNOWN_PLACEHOLDERS.stream().sorted().toList()));
+        }
+        return commands;
     }
 
     private PluginSettings.Debug loadDebug(FileConfiguration config) {
